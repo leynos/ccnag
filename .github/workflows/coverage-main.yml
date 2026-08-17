@@ -1,0 +1,80 @@
+name: Coverage (main)
+
+# CodeScene accepts `cs-coverage upload` only for analysed branches, so
+# main-branch coverage is uploaded here on push; pull requests generate
+# coverage (and, once the project's gate is enabled, run the changed-line
+# `cs-coverage check`) in ci.yml instead. This workflow also advances the
+# coverage ratchet baseline: caches saved on main are readable by every
+# pull-request run, so the baseline written here is the one PR ratchet
+# checks compare against.
+#
+# workflow_dispatch is mandatory, not a convenience: merges performed by
+# the automerge workflow's GITHUB_TOKEN do not fire push-event workflows,
+# so automerged changes to main only receive coverage when this workflow
+# is dispatched. The upload is guarded on CS_ACCESS_TOKEN, so a generated
+# repository that has not yet been onboarded to CodeScene skips it cleanly.
+
+'on':
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  coverage-upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      BUILD_PROFILE: debug
+    steps:
+      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+        with:
+          persist-credentials: false
+      - name: Setup Rust
+        uses: leynos/shared-actions/.github/actions/setup-rust@47b337e4f230b591891656534d4ffad868131740
+        with:
+          rustflags: -Zpolonius=next
+      - name: Log Rust compiler configuration
+        run: |-
+          rustc --version
+          printf 'Base RUSTFLAGS: %s\n' "$RUSTFLAGS"
+      - name: Install mold linker
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          # mold accelerates dev builds; coverage uses lld for llvm-tools compatibility.
+          sudo apt-get update \
+            && sudo apt-get install --yes --no-install-recommends clang lld mold
+      - name: Install test runner
+        env:
+          RUSTFLAGS: ""
+        run: cargo binstall --no-confirm --locked cargo-nextest
+      - name: Log coverage linker configuration
+        run: |
+          echo "Coverage linker: clang"
+          echo "Coverage RUSTFLAGS: -Zpolonius=next -C link-arg=-fuse-ld=lld"
+          echo "Coverage CFLAGS: -fuse-ld=lld"
+          echo "Coverage LDFLAGS: -fuse-ld=lld"
+      - name: Test and Measure Coverage
+        uses: leynos/shared-actions/.github/actions/generate-coverage@47b337e4f230b591891656534d4ffad868131740
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
+          RUSTFLAGS: -Zpolonius=next -C link-arg=-fuse-ld=lld
+          CFLAGS: -fuse-ld=lld
+          LDFLAGS: -fuse-ld=lld
+        with:
+          output-path: lcov.info
+          format: lcov
+          with-ratchet: 'true'
+      - name: Upload coverage data to CodeScene
+        env:
+          CS_ACCESS_TOKEN: ${{ secrets.CS_ACCESS_TOKEN }}
+        if: env.CS_ACCESS_TOKEN != ''
+        uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@47b337e4f230b591891656534d4ffad868131740
+        with:
+          format: lcov
+          access-token: ${{ env.CS_ACCESS_TOKEN }}
+          installer-checksum: ${{ vars.CODESCENE_CLI_SHA256 }}
+

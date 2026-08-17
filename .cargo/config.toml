@@ -1,0 +1,18 @@
+# Enable the Polonius alpha borrow-checking analysis by default so Cargo,
+# rust-analyzer, and verification tools agree about what borrows are legal.
+# An inherited RUSTFLAGS value overrides this table; the generated Makefile and
+# workflows therefore re-state -Zpolonius=next whenever they set RUSTFLAGS.
+[build]
+rustflags = ["-Zpolonius=next"]
+rustdocflags = ["-Zpolonius=next"]
+[unstable]
+codegen-backend = true
+
+[profile.dev]
+codegen-backend = "cranelift"
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+# Cargo selects target rustflags instead of merging them with build.rustflags,
+# so this target-specific mold configuration must repeat the Polonius flag.
+rustflags = ["-Zpolonius=next", "-C", "link-arg=-fuse-ld=mold"]
