@@ -1,0 +1,10 @@
+# This project enables the nightly-only Polonius alpha borrow checker. Keep the
+# dated pin reproducible and review docs/polonius.md before changing it.
+[toolchain]
+channel = "nightly-2026-08-13"
+components = [
+  "clippy",
+  "llvm-tools-preview",
+  "rustc-codegen-cranelift-preview",
+  "rustfmt",
+]

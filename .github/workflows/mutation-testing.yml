@@ -1,0 +1,47 @@
+name: Mutation testing
+
+# Thin caller of the shared mutation-testing reusable workflow; caller
+# guide: leynos/shared-actions docs/mutation-cargo-workflow.md.
+# Scheduled runs mutate only files changed within the detection window;
+# manual dispatch runs mutate everything, fanned out across shards. To
+# test a branch, select it in the Actions "Run workflow" control.
+
+'on':
+  schedule:
+    # Default is daily at 09:15 UTC. Stagger this slot when adopting the
+    # workflow in a new repository, choosing an unclaimed time so related
+    # repositories do not run concurrently.
+    - cron: "15 9 * * *"
+  workflow_dispatch:
+
+# Default the token to no scopes; the job opts in explicitly.
+permissions: {}
+
+# Serialize runs per ref: a dispatch during a scheduled run (or vice
+# versa) queues rather than racing. Runs are informational, so queued
+# runs wait instead of cancelling.
+concurrency:
+  group: mutation-testing-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mutation:
+    permissions:
+      contents: read
+      id-token: write # OIDC workflow-source resolution
+    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@0c8bd605f8966a004decb0b54f717a745f51bc57
+    with:
+      # Match the CI baseline (`make test` runs --all-targets
+      # --all-features) so the test command exercised against mutants
+      # mirrors what gates pull requests.
+      extra-args: "--all-features"
+      # .cargo/config.toml links Linux dev targets with clang and
+      # -fuse-ld=mold, so the mutants jobs need the same packages that
+      # ci.yml installs before any cargo command runs on a bare
+      # ubuntu-latest runner. The reusable workflow executes these under
+      # bash with `set -euo pipefail`.
+      setup-commands: |
+        export DEBIAN_FRONTEND=noninteractive
+        # mold accelerates dev builds; coverage uses lld for llvm-tools compatibility.
+        sudo apt-get update \
+          && sudo apt-get install --yes --no-install-recommends clang lld mold

@@ -1,0 +1,138 @@
+
+name: CI
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      BUILD_PROFILE: debug
+      WHITAKER_INSTALLER_VERSION: '0.2.6'
+    steps:
+      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+        with:
+          # fetch-depth: 0 so CodeScene's `cs-coverage check` can reach the
+          # pull request's merge base once the deferred gate below is wired.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Rust
+        uses: leynos/shared-actions/.github/actions/setup-rust@47b337e4f230b591891656534d4ffad868131740
+        with:
+          rustflags: -Zpolonius=next
+      - name: Log Rust compiler configuration
+        run: |-
+          rustc --version
+          printf 'Base RUSTFLAGS: %s\n' "$RUSTFLAGS"
+      - name: Install mold linker
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          # mold accelerates dev builds; coverage uses lld for llvm-tools compatibility.
+          sudo apt-get update \
+            && sudo apt-get install --yes --no-install-recommends clang lld mold
+      - name: Format
+        run: make check-fmt
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@2df9e28eb87988518ef3880c34edad45d65b1668
+        with:
+          globs: |
+            **/*.md
+            !**/target/**
+            !**/dist/**
+      - name: Setup uv
+        uses: astral-sh/setup-uv@12d13f90bc3a5a1971bebad4beb09a4dfa962e91
+      - name: Check spelling
+        run: make spelling
+      - name: Install test runner
+        env:
+          RUSTFLAGS: ""
+        run: cargo binstall --no-confirm --locked cargo-nextest
+      # Dependency audits report advisories against the whole lockfile, so a
+      # newly published advisory would fail every Dependabot PR regardless of
+      # content and deadlock auto-merge. The scheduled audit workflow covers
+      # Dependabot merges instead.
+      - name: Install cargo-audit
+        if: github.actor != 'dependabot[bot]'
+        env:
+          RUSTFLAGS: ""
+        run: cargo binstall --no-confirm cargo-audit
+      - name: Setup Python for audit manifest extraction
+        if: github.actor != 'dependabot[bot]'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: '3.x'
+      - name: Cache Whitaker installation
+        id: cache-whitaker
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: |
+            ~/.cargo/bin/whitaker-installer
+            ~/.local/bin/whitaker
+            ~/.dylint_drivers
+            ~/.local/share/whitaker
+          key: whitaker-v3-${{ runner.os }}-${{ env.WHITAKER_INSTALLER_VERSION }}
+      - name: Install Whitaker
+        env:
+          RUSTFLAGS: ""
+          WHITAKER_CACHE_HIT: ${{ steps.cache-whitaker.outputs.cache-hit }}
+        run: |
+          set -euo pipefail
+          echo "Whitaker cache hit: ${WHITAKER_CACHE_HIT}"
+          if [ "${WHITAKER_CACHE_HIT}" != "true" ]; then
+            echo "Installing whitaker-installer ${WHITAKER_INSTALLER_VERSION}"
+            cargo binstall --no-confirm --locked \
+              whitaker-installer@"${WHITAKER_INSTALLER_VERSION}"
+          fi
+          whitaker-installer --cranelift
+          echo "Whitaker binary: $(command -v whitaker || true)"
+      - name: Audit dependencies
+        if: github.actor != 'dependabot[bot]'
+        run: make audit
+      - name: Lint
+        run: make lint
+      - name: Log coverage linker configuration
+        run: |
+          echo "Coverage linker: clang"
+          echo "Coverage RUSTFLAGS: -Zpolonius=next -C link-arg=-fuse-ld=lld"
+          echo "Coverage CFLAGS: -fuse-ld=lld"
+          echo "Coverage LDFLAGS: -fuse-ld=lld"
+      - name: Test and Measure Coverage
+        uses: leynos/shared-actions/.github/actions/generate-coverage@47b337e4f230b591891656534d4ffad868131740
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
+          RUSTFLAGS: -Zpolonius=next -C link-arg=-fuse-ld=lld
+          CFLAGS: -fuse-ld=lld
+          LDFLAGS: -fuse-ld=lld
+        with:
+          output-path: lcov.info
+          format: lcov
+          with-ratchet: 'true'
+      # Deferred CodeScene coverage gate (mode: check):
+      # The changed-line gate is intentionally NOT wired here yet.
+      # `cs-coverage check` fails on any CodeScene project whose configuration
+      # lacks a `gates` section — a CodeScene-side, per-project setting, not a
+      # CI defect. This generated repository has no upload step on pull
+      # requests, so the coverage rollup cannot be poisoned by a timed-out
+      # check. Once the repository is onboarded to CodeScene coverage and its
+      # project gate is enabled, add a guarded step referencing the project
+      # URL https://api.codescene.io/v2/projects/<project-id>:
+      #     - name: Check coverage against CodeScene gates
+      #       env:
+      #         CS_ACCESS_TOKEN: ${{ secrets.CS_ACCESS_TOKEN }}
+      #       if: env.CS_ACCESS_TOKEN != ''
+      #       uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@47b337e4f230b591891656534d4ffad868131740
+      #       with:
+      #         format: lcov
+      #         mode: check
+      #         project-url: https://api.codescene.io/v2/projects/<project-id>
+      #         access-token: ${{ env.CS_ACCESS_TOKEN }}
+      #         installer-checksum: ${{ vars.CODESCENE_CLI_SHA256 }}
+
