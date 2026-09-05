@@ -1,4 +1,4 @@
-.PHONY: help all clean test build release coverage lint fmt check-fmt markdownlint spelling nixie audit rust-audit
+.PHONY: help all clean test build release coverage lint fmt check-fmt markdownlint spelling nixie audit rust-audit test-workflow-contracts
 
 SHELL := bash
 
@@ -79,6 +79,9 @@ spelling: ## Enforce en-GB-oxendict spelling in Markdown prose
 	uv run scripts/generate_typos_config.py
 	find . -type f -name '*.md' -not -path './target/*' -print0 | \
 		xargs -0 $(TYPOS) --config typos.toml --force-exclude
+
+test-workflow-contracts: ## Validate the GitHub workflow contracts
+	uv run --no-project --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q
 
 nixie: ## Validate Mermaid diagrams
 	$(NIXIE) --no-sandbox
