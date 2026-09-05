@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: read
       id-token: write # OIDC workflow-source resolution
-    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@0c8bd605f8966a004decb0b54f717a745f51bc57
+    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@2b04a1ac2f4bfeb75804b44b46acf29a23c8d595
     with:
       # Match the CI baseline (`make test` runs --all-targets
       # --all-features) so the test command exercised against mutants
