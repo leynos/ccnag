@@ -25,6 +25,7 @@ REQUIRED_PACKAGES = {"clang", "lld", "mold"}
 
 
 def _steps() -> list[dict]:
+    """Return the act-validation job's steps in workflow order."""
     document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     job = document["jobs"]["act-validation"]
     return job["steps"]
@@ -56,6 +57,16 @@ def _installs_required_packages(step: dict) -> bool:
     return False
 
 
+def _runs_test_command(step: dict) -> bool:
+    """Whether the step's run block contains the test command as a token sequence."""
+    tokens = _run_tokens(step)
+    command = shlex.split(TEST_COMMAND)
+    return any(
+        tokens[index : index + len(command)] == command
+        for index in range(len(tokens) - len(command) + 1)
+    )
+
+
 def test_linkers_are_installed_before_the_tests_run() -> None:
     """An apt-get install naming clang, lld and mold precedes ``make test``."""
     steps = _steps()
@@ -64,14 +75,9 @@ def test_linkers_are_installed_before_the_tests_run() -> None:
     ]
     assert install_indexes, (
         "act-validation must run `apt-get install` naming clang, lld and mold: "
-        "`make test` links with -fuse-ld=mold on Linux and the runner ships none of them"
+        "`make test` links with -fuse-ld=mold on Linux and the runner ships none"
     )
-    test_indexes = [
-        i
-        for i, step in enumerate(steps)
-        if TEST_COMMAND in _run_tokens(step)
-        or step.get("run", "").strip() == TEST_COMMAND
-    ]
+    test_indexes = [i for i, step in enumerate(steps) if _runs_test_command(step)]
     assert test_indexes, f"act-validation must run {TEST_COMMAND!r}"
     assert min(install_indexes) < min(test_indexes), (
         "the linker install step must come before the step that runs the tests"
