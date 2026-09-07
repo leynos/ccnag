@@ -48,7 +48,7 @@ jobs:
             !**/target/**
             !**/dist/**
       - name: Setup uv
-        uses: astral-sh/setup-uv@12d13f90bc3a5a1971bebad4beb09a4dfa962e91
+        uses: astral-sh/setup-uv@e105c8fb1d7b13074b851babdaef4185243c6a07
       - name: Check spelling
         run: make spelling
       - name: Workflow contracts
