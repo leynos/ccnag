@@ -361,9 +361,11 @@ cloned only on insertion, and error context is built lazily. See
 ## Markdown guidance
 
 - Validate Markdown files using `make markdownlint`. This target also runs the
-  pinned `typos` spelling gate with en-GB-oxendict policy.
-- The tracked `typos.toml` is generated. Add narrow repository exceptions to
-  `typos.local.toml`, then run `uv run scripts/generate_typos_config.py`.
+  `make spelling` gate with en-GB-oxendict policy.
+- `typos.toml` regenerates from the live shared dictionary and the
+  `typos.local.toml` overlay on every `make spelling` run, and is never
+  drift-checked in CI. Add narrow repository exceptions to `typos.local.toml`,
+  then run `make spelling`.
 - Run `make fmt` after any documentation changes to format all Markdown
   files and fix table markup.
 - Validate Mermaid diagrams in Markdown files by running `make nixie`.
