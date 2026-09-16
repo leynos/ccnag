@@ -34,8 +34,10 @@ MDTABLEFIX ?= mdtablefix
 MDTABLEFIX_SELECT = --git --include-untracked
 MDTABLEFIX_RULES = --wrap --renumber --breaks --ellipsis --fences
 NIXIE ?= nixie
-TYPOS_VERSION ?= 1.48.0
-TYPOS := uv tool run typos@$(TYPOS_VERSION)
+TYPOS_CONFIG_BUILDER_VERSION ?= v0.1.1
+TYPOS_CONFIG_BUILDER := uv tool run \
+    --from "git+https://github.com/leynos/typos-config-builder.git@$(TYPOS_CONFIG_BUILDER_VERSION)" \
+    typos-config-builder
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 
 build: target/debug/$(TARGET) ## Build debug binary
@@ -86,9 +88,7 @@ markdownlint: ## Lint Markdown files
 	$(MDLINT) '**/*.md'
 	+$(MAKE) spelling
 spelling: ## Enforce en-GB-oxendict spelling in Markdown prose
-	uv run scripts/generate_typos_config.py
-	find . -type f -name '*.md' -not -path './target/*' -print0 | \
-		xargs -0 $(TYPOS) --config typos.toml --force-exclude
+	$(TYPOS_CONFIG_BUILDER) gate --repository .
 
 test-workflow-contracts: ## Validate the GitHub workflow contracts
 	uv run --no-project --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q

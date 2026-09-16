@@ -90,11 +90,11 @@ The generated `Makefile` exposes these public targets:
   dependency updates. Human PRs still retain the audit gate, and
   `.github/workflows/audit.yml` runs weekly and can also be triggered manually
   as the compensating control.
-- `make markdownlint` checks Markdown files and enforces en-GB-oxendict
-  spelling through the pinned `typos` release.
-- `make spelling` refreshes the shared Oxford dictionary when its published
-  source is newer than the ignored local cache, generates `typos.toml`, and
-  checks Markdown prose.
+- `make markdownlint` checks Markdown files and also runs `make spelling`.
+- `make spelling` runs the pinned `typos-config-builder` gate. It regenerates
+  `typos.toml` from the live shared dictionary and the `typos.local.toml`
+  overlay, then checks Markdown prose. The tracked `typos.toml` is never
+  drift-checked in CI.
 - `make nixie` validates Mermaid diagrams.
 
 Install `clang`, `lld`, `mold`, `python3`, and `cargo-audit` before running the
