@@ -16,7 +16,7 @@ jobs:
       BUILD_PROFILE: debug
       WHITAKER_INSTALLER_VERSION: '0.2.6'
     steps:
-      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
         with:
           # fetch-depth: 0 so CodeScene's `cs-coverage check` can reach the
           # pull request's merge base once the deferred gate below is wired.

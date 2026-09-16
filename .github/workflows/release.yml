@@ -42,7 +42,7 @@ jobs:
             target: x86_64-unknown-freebsd
             ext: ""
     steps:
-      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
         with:
           persist-credentials: false
       - uses: leynos/shared-actions/.github/actions/setup-rust@47b337e4f230b591891656534d4ffad868131740
