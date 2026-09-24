@@ -122,13 +122,14 @@ jobs:
           format: lcov
           with-ratchet: 'true'
       # The doctests are the only part of `make test` the coverage step does
-      # not run. The environment mirrors the coverage step's, because
-      # .cargo/config.toml links with mold on Linux and this runner has none.
-      # tests/workflow_contracts/suite_runs_once_test.py holds the split.
+      # not run. The flags are the ones `make test` gives its doctest line
+      # (DEV_RUST_FLAGS and RUSTDOC_FLAGS); both restate Polonius because an
+      # assigned value replaces .cargo/config.toml's. The mold install above
+      # provides the linker. tests/workflow_contracts/suite_runs_once_test.py
+      # holds the split.
       - name: Run doctests
         env:
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
-          RUSTFLAGS: -D warnings -Zpolonius=next -C link-arg=-fuse-ld=lld
+          RUSTFLAGS: -D warnings -Zpolonius=next -C link-arg=-fuse-ld=mold
           RUSTDOCFLAGS: --cfg docsrs -D warnings -Zpolonius=next
         run: cargo test --doc --workspace --all-features
       # Deferred CodeScene coverage gate (mode: check):
