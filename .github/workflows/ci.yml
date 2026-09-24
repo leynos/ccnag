@@ -121,6 +121,16 @@ jobs:
           output-path: lcov.info
           format: lcov
           with-ratchet: 'true'
+      # The doctests are the only part of `make test` the coverage step does
+      # not run. The environment mirrors the coverage step's, because
+      # .cargo/config.toml links with mold on Linux and this runner has none.
+      # tests/workflow_contracts/suite_runs_once_test.py holds the split.
+      - name: Run doctests
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
+          RUSTFLAGS: -D warnings -Zpolonius=next -C link-arg=-fuse-ld=lld
+          RUSTDOCFLAGS: --cfg docsrs -D warnings -Zpolonius=next
+        run: cargo test --doc --workspace --all-features
       # Deferred CodeScene coverage gate (mode: check):
       # The changed-line gate is intentionally NOT wired here yet.
       # `cs-coverage check` fails on any CodeScene project whose configuration
