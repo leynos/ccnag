@@ -36,6 +36,13 @@ REPOSITORY_ROOT = pathlib.Path(__file__).resolve().parents[2]
 WORKFLOWS = REPOSITORY_ROOT / ".github" / "workflows"
 DOCTEST_COMMAND = "cargo test --doc --workspace --all-features"
 COVERAGE_ACTION = "leynos/shared-actions/.github/actions/generate-coverage@"
+#: The Makefile's DEV_RUST_FLAGS and RUSTDOC_FLAGS, which `make test` gives its
+#: doctest line. Both restate Polonius, because an assigned value replaces
+#: `.cargo/config.toml`'s flags.
+DOCTEST_ENV = {
+    "RUSTFLAGS": "-D warnings -Zpolonius=next -C link-arg=-fuse-ld=mold",
+    "RUSTDOCFLAGS": "--cfg docsrs -D warnings -Zpolonius=next",
+}
 SUITE_JOB = "ci.yml/build-test"
 #: The coverage inputs this repository passes. The pinned action declares no
 #: doctest input, so the contract holds the inputs to this set rather than
@@ -197,6 +204,9 @@ def test_build_test_runs_the_doctests_on_every_event() -> None:
     ]
     assert len(doctests) == 1, "build-test must run the doctests once"
     assert "if" not in doctests[0], "the doctest step must run on every event"
+    assert doctests[0].get("env") == DOCTEST_ENV, (
+        "the doctest step must carry the flags `make test` gives its doctest line"
+    )
 
 
 def test_build_test_runs_coverage_on_every_event() -> None:
