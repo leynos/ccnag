@@ -19,10 +19,14 @@ compensating control is `.github/workflows/audit.yml`, which runs weekly and
 can also be triggered manually. `make coverage` uses `cargo llvm-cov` with
 `lld`.
 
-GitHub Actions Act validation lives in `.github/workflows/act-validation.yml`.
-The main `.github/workflows/ci.yml` workflow deliberately does not run
-`make test WITH_ACT=1`; the separate Act workflow runs those slower
-container-backed checks in parallel.
+The test suite runs once per pull request, in `ci.yml`'s coverage step. That
+step runs the same tests `make test` runs except the doctests, which
+`build-test` runs in a step of its own with
+`cargo test --doc --workspace --all-features`. The repository used to carry an
+`act-validation.yml` workflow that ran `make test WITH_ACT=1`, but nothing reads
+`WITH_ACT` and no test is gated on Act, so that workflow ran the whole suite a
+second time and was removed. The crate declares no features, so `make test`'s
+`--all-features` selects the same tests as the coverage run's default.
 
 A scheduled `.github/workflows/mutation-testing.yml` workflow also runs
 `cargo-mutants` via the shared reusable workflow, daily and on manual dispatch.
@@ -124,13 +128,15 @@ capable revision. Remove that literal revision assertion once the probe exists.
 
 `make test-workflow-contracts` runs the tests under
 `tests/workflow_contracts/`, which parse the GitHub workflow files and assert
-the mechanisms they must contain (for example, that `act-validation.yml`
-installs `clang`, `lld` and `mold` before it runs `make test`, matched on the
-`apt-get install` command itself rather than a step name). The target needs only
-`uv` on `PATH`: it runs
-`uv run --no-project --with 'pytest>=8' --with 'pyyaml>=6' pytest
-tests/workflow_contracts -q`,
-so no project environment or extra install is required. Run it after editing
+the mechanisms they must contain (for example, that no workflow runs the suite
+outside the coverage step and that `build-test` runs the doctests). The target
+needs only `uv` on `PATH`, because it runs:
+
+```sh
+uv run --no-project --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q
+```
+
+No project environment or extra install is required. Run it after editing
 anything under `.github/workflows/`; CI runs it in `build-test` after the
 spelling check, and the contract fails the build if a workflow loses a
 mechanism it depends on.
