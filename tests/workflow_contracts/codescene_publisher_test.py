@@ -19,6 +19,7 @@ from __future__ import annotations
 import pathlib
 import typing as typ
 
+import pytest
 import yaml
 
 if typ.TYPE_CHECKING:
@@ -45,15 +46,29 @@ CREDENTIAL_NAME = "cs_access_token"
 
 def _publisher() -> Mapping:
     """Return the decoded publisher workflow."""
-    workflow = yaml.safe_load(PUBLISHER_PATH.read_text(encoding="utf-8"))
-    assert isinstance(workflow, dict), "coverage-main.yml must contain a mapping"
-    return workflow
+    match yaml.safe_load(PUBLISHER_PATH.read_text(encoding="utf-8")):
+        case dict() as workflow:
+            return workflow
+        case other:
+            pytest.fail(f"coverage-main.yml must contain a mapping, got {other!r}")
 
 
 def _steps(workflow: Mapping) -> list[Mapping]:
     """Return the publisher job's mapping-shaped steps, in order."""
-    steps = workflow["jobs"][JOB]["steps"]
-    return [step for step in steps if isinstance(step, dict)]
+    match workflow:
+        case {"jobs": {"coverage-upload": {"steps": list() as steps}}}:
+            return [step for step in steps if _is_mapping(step)]
+        case _:
+            pytest.fail(f"coverage-main.yml must declare {JOB} with a steps list")
+
+
+def _is_mapping(value: object) -> bool:
+    """Report whether a parsed YAML value is a mapping."""
+    match value:
+        case dict():
+            return True
+        case _:
+            return False
 
 
 def _is_upload(step: Mapping) -> bool:
@@ -83,8 +98,9 @@ def _located_strings(value: object, path: str) -> cabc.Iterator[tuple[str, str]]
         case dict():
             for key, item in value.items():
                 child = f"{path}.{key}" if path else str(key)
-                if isinstance(key, str):
-                    yield child, key
+                # A key names its own entry; a non-string key, such as the
+                # boolean PyYAML makes of `on`, yields nothing.
+                yield from _located_strings(key, child)
                 yield from _located_strings(item, child)
         case list():
             for index, item in enumerate(value):
