@@ -132,3 +132,24 @@ Surviving mutants and timeouts are informational and leave the run green, so a
 red run means something actually broke — a usage error, an already-failing test
 baseline, or an internal error. Watch for those through GitHub's notifications
 for failed scheduled runs.
+
+## CodeScene Coverage
+
+`.github/workflows/coverage-main.yml` measures coverage on every push to
+`main`, advances the coverage ratchet baseline that pull requests compare
+against, and uploads the report to CodeScene. It can also be started from the
+**Actions** tab with **Run workflow**; that is how a merge made by the
+Dependabot automerge workflow gets measured, since such a merge fires no push
+event.
+
+The upload runs only when both hold:
+
+- the repository has a `CS_ACCESS_TOKEN` secret. A
+  `Check CodeScene token availability` step reports whether it exists, and
+  without it the upload step is skipped rather than failing the run;
+- the run is on `refs/heads/main`. A dispatch from any other branch measures
+  coverage but uploads nothing, because CodeScene analyses `main` alone.
+
+The token is passed to the upload action as its input and is never placed in an
+environment. The upload also reads the `CODESCENE_CLI_SHA256` repository
+variable as its installer checksum. Pull requests never contact CodeScene.

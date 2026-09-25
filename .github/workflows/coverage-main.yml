@@ -68,13 +68,23 @@ jobs:
           output-path: lcov.info
           format: lcov
           with-ratchet: 'true'
+      # Publishes whether the token exists, and nothing else. The token is in
+      # no `env` on this workflow: the upload is a composite action whose
+      # nested steps inherit the calling step's `env`. GitHub evaluates the
+      # expression before it sends the command to the runner, so this shell
+      # receives only `true` or `false`; the upload alone receives the token,
+      # as its input.
+      - name: Check CodeScene token availability
+        id: codescene_token
+        run: echo "available=${{ secrets.CS_ACCESS_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+      # The ref guard is not redundant with the push branch filter: a
+      # dispatch runs from whichever branch started it, and the upload action
+      # does not check the ref itself.
       - name: Upload coverage data to CodeScene
-        env:
-          CS_ACCESS_TOKEN: ${{ secrets.CS_ACCESS_TOKEN }}
-        if: env.CS_ACCESS_TOKEN != ''
+        if: steps.codescene_token.outputs.available == 'true' && github.ref == 'refs/heads/main'
         uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@47b337e4f230b591891656534d4ffad868131740
         with:
           format: lcov
-          access-token: ${{ env.CS_ACCESS_TOKEN }}
+          access-token: ${{ secrets.CS_ACCESS_TOKEN }}
           installer-checksum: ${{ vars.CODESCENE_CLI_SHA256 }}
 
