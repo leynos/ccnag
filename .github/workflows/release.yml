@@ -45,8 +45,9 @@ jobs:
       - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
         with:
           persist-credentials: false
-      - uses: leynos/shared-actions/.github/actions/setup-rust@47b337e4f230b591891656534d4ffad868131740
+      - uses: leynos/shared-actions/.github/actions/setup-rust@4fb8eb7ad52454678a0662865d81d3cd17aa6e0e
         with:
+          expect-cache: any
           toolchain: nightly-2026-08-13
           rustflags: -Zpolonius=next
       - name: Log Rust compiler configuration
