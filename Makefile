@@ -56,13 +56,12 @@ clean: ## Remove build artifacts
 	$(CARGO) clean
 	rm -f .typos-oxendict-base.json .typos-oxendict-base.toml
 
-test: export RUSTFLAGS := $(strip $(RUSTFLAGS) $(DEV_RUST_FLAGS))
 test: ## Run tests with warnings treated as errors
-	$(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
-	RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) test --doc --workspace --all-features
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)" $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
+	RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)" $(CARGO) test --doc --workspace --all-features
 
 target/%/$(TARGET): ## Build binary in debug or release mode
-	$(if $(findstring release,$(@)),RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(POLONIUS_FLAGS)",RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)") $(CARGO) build $(BUILD_JOBS) $(if $(findstring release,$(@)),--release) --bin $(TARGET)
+	$(if $(findstring release,$(@)),RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(RUST_FLAGS) $(POLONIUS_FLAGS)",RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)") $(CARGO) build $(BUILD_JOBS) $(if $(findstring release,$(@)),--release) --bin $(TARGET)
 
 coverage: ## Generate lcov coverage with lld for llvm-tools compatibility
 	@echo "coverage linker flags: $(COVERAGE_LINKER_FLAGS)"

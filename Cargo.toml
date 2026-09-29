@@ -98,3 +98,6 @@ bare_urls                           = "deny"
 invalid_html_tags                   = "deny"
 invalid_codeblock_attributes        = "deny"
 unescaped_backticks                 = "deny"
+
+[dev-dependencies]
+rstest = "0.26.1"
