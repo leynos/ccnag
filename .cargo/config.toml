@@ -2,8 +2,12 @@
 # rust-analyzer, and verification tools agree about what borrows are legal.
 # An inherited RUSTFLAGS value overrides this table; the generated Makefile and
 # workflows therefore re-state -Zpolonius=next whenever they set RUSTFLAGS.
+#
+# The development build standard (concordat rule `rust-build-defaults`) adds
+# the parallel rustc frontend to every source and, on Linux, the mold linker.
+# The Makefile composes the same flags into the RUSTFLAGS its recipes set.
 [build]
-rustflags = ["-Zpolonius=next"]
+rustflags = ["-Zpolonius=next", "-Zthreads=8"]
 rustdocflags = ["-Zpolonius=next"]
 [unstable]
 codegen-backend = true
@@ -15,4 +19,4 @@ codegen-backend = "cranelift"
 linker = "clang"
 # Cargo selects target rustflags instead of merging them with build.rustflags,
 # so this target-specific mold configuration must repeat the Polonius flag.
-rustflags = ["-Zpolonius=next", "-C", "link-arg=-fuse-ld=mold"]
+rustflags = ["-Zpolonius=next", "-Zthreads=8", "-C", "link-arg=-fuse-ld=mold"]

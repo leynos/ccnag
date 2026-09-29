@@ -40,7 +40,7 @@ COVERAGE_ACTION = "leynos/shared-actions/.github/actions/generate-coverage@"
 #: doctest line. Both restate Polonius, because an assigned value replaces
 #: `.cargo/config.toml`'s flags.
 DOCTEST_ENV = {
-    "RUSTFLAGS": "-D warnings -Zpolonius=next -C link-arg=-fuse-ld=mold",
+    "RUSTFLAGS": "-D warnings -Zpolonius=next -Zthreads=8 -C link-arg=-fuse-ld=mold",
     "RUSTDOCFLAGS": "--cfg docsrs -D warnings -Zpolonius=next",
 }
 SUITE_JOB = "ci.yml/build-test"

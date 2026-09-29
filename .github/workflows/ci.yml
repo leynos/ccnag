@@ -129,7 +129,7 @@ jobs:
       # holds the split.
       - name: Run doctests
         env:
-          RUSTFLAGS: -D warnings -Zpolonius=next -C link-arg=-fuse-ld=mold
+          RUSTFLAGS: -D warnings -Zpolonius=next -Zthreads=8 -C link-arg=-fuse-ld=mold
           RUSTDOCFLAGS: --cfg docsrs -D warnings -Zpolonius=next
         run: cargo test --doc --workspace --all-features
       # Deferred CodeScene coverage gate (mode: check):
