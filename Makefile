@@ -19,7 +19,8 @@ RUST_FLAGS := -D warnings $(RUST_FLAGS)
 # onto any inherited RUSTFLAGS (CI's setup-rust exports one), because an
 # assigned RUSTFLAGS replaces every `rustflags` table in .cargo/config.toml.
 STANDARD_THREADS_FLAG ?= -Zthreads=8
-DEV_LINKER_FLAGS ?= $(if $(filter Linux,$(shell uname -s)),-C link-arg=-fuse-ld=mold)
+BUILD_HOST_OS := $(shell uname -s)
+DEV_LINKER_FLAGS ?= $(if $(filter Linux,$(BUILD_HOST_OS)),-C link-arg=-fuse-ld=mold)
 DEV_RUST_FLAGS ?= $(RUST_FLAGS) $(POLONIUS_FLAGS) $(STANDARD_THREADS_FLAG) $(DEV_LINKER_FLAGS)
 RUSTDOC_FLAGS ?=
 RUSTDOC_FLAGS := --cfg docsrs -D warnings $(POLONIUS_FLAGS) $(RUSTDOC_FLAGS)
