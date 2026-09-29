@@ -39,6 +39,9 @@ jobs:
         uses: leynos/shared-actions/.github/actions/setup-rust@4fb8eb7ad52454678a0662865d81d3cd17aa6e0e
         with:
           expect-cache: any
+          # One sccache lane with ci.yml's build-test: only a push to main saves,
+          # so pull requests warm from the lane main's publisher writes.
+          sccache-cache-discriminator: coverage
           rustflags: -Zpolonius=next
       - name: Log Rust compiler configuration
         run: |-

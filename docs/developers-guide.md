@@ -60,6 +60,29 @@ LLVM-compatible linker behaviour.
 Install `clang`, `lld`, `mold`, `python3`, and `cargo-audit` before running the
 full generated workflow locally on Linux.
 
+### Compiler cache (sccache)
+
+The shared `setup-rust` action gives sccache a local-disk directory under
+`runner.temp` on a GitHub-hosted runner. The directory is restored with
+`actions/cache` on every event and saved only on a push to `main`, so a pull
+request reads the cache and never writes one.
+
+- **One shared lane.** `ci.yml`'s `build-test` and `coverage-main.yml`'s
+  `coverage-upload` both set `sccache-cache-discriminator: coverage`. The
+  action's default discriminator is the job ID, which would give the two jobs
+  different lanes and leave the pull-request lane without a writer. Only
+  `coverage-upload` runs on a push to `main`, so it is the writer and
+  `build-test` is the reader. Keep the two values equal.
+- **What it warms.** The lane holds the artefacts of the coverage build, so the
+  coverage step of `build-test` restores from it. The lint step compiles a
+  different graph and gains almost nothing from it; measured on frankie, lint
+  hit 2.5 % and the coverage step hit 100 %.
+- **`expect-cache: any`.** A GitHub-hosted job accepts whichever cache backend
+  the runner offers, so the input is set explicitly.
+- **`release.yml` disables it.** The release job builds with `cross` inside a
+  container that receives neither `RUSTC_WRAPPER` nor `SCCACHE_PATH`, so
+  sccache is switched off there with `use-sccache: 'false'`.
+
 ## Spelling policy
 
 Markdown uses en-GB-oxendict spelling enforced by `make spelling`, which runs
