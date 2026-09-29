@@ -81,7 +81,10 @@ request reads the cache and never writes one.
   the runner offers, so the input is set explicitly.
 - **`release.yml` disables it.** The release job builds with `cross` inside a
   container that receives neither `RUSTC_WRAPPER` nor `SCCACHE_PATH`, so
-  sccache is switched off there with `use-sccache: 'false'`.
+  sccache is switched off there with `use-sccache: 'false'`. The contract
+  `tests/workflow_contracts/sccache_lane_test.py` holds all three clauses
+  (`expect-cache`, the shared discriminator, and the release switch) by action
+  name and inputs, never by a revision.
 
 ## Spelling policy
 
