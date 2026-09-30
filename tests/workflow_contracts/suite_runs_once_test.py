@@ -27,7 +27,6 @@ from __future__ import annotations
 import os
 import pathlib
 import subprocess
-import sys
 import tomllib
 
 import pytest
@@ -358,7 +357,7 @@ def test_command_lookup_runs_nothing(line: str) -> None:
     assert not runs_suite(line, "all")
 
 
-def _make_default_goal(makefile: str) -> str | None:
+def _make_default_goal(makefile: str, gnu_make: str) -> str | None:
     """Return the default goal GNU make itself settles on, or ``None``.
 
     ``make -pn`` prints the variable database without running a recipe, and
@@ -366,7 +365,7 @@ def _make_default_goal(makefile: str) -> str | None:
     assignment (GNU make manual, "Other Special Variables").
     """
     result = subprocess.run(  # noqa: S603 - a fixed command and a fixture
-        ["make", "-f", "-", "-pn"],
+        [gnu_make, "-f", "-", "-pn"],
         input=makefile,
         capture_output=True,
         text=True,
@@ -399,18 +398,18 @@ MAKE_FIXTURES = [
 ]
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="pinned to GNU make on Linux")
 @pytest.mark.parametrize("makefile", MAKE_FIXTURES)
-def test_the_reader_agrees_with_gnu_make(makefile: str) -> None:
+def test_the_reader_agrees_with_gnu_make(makefile: str, gnu_make: str) -> None:
     """Pin the default-goal reader to make itself, not to a reading of its manual."""
-    by_make = _make_default_goal(makefile)
+    by_make = _make_default_goal(makefile, gnu_make)
     assert by_make is not None, "make must accept the fixture"
     assert default_goal(makefile) == by_make, makefile
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="pinned to GNU make on Linux")
-def test_make_refuses_several_words_and_the_reader_does_not_read_them() -> None:
+def test_make_refuses_several_words_and_the_reader_does_not_read_them(
+    gnu_make: str,
+) -> None:
     """Fall back to the first rule where make refuses a multi-word goal."""
     makefile = ".DEFAULT_GOAL := first\n.DEFAULT_GOAL += second\nbuild:\nfirst:\nsecond:\n"
-    assert _make_default_goal(makefile) is None
+    assert _make_default_goal(makefile, gnu_make) is None
     assert default_goal(makefile) == "build"
