@@ -28,6 +28,15 @@ step runs the same tests `make test` runs except the doctests, which
 second time and was removed. The crate declares no features, so `make test`'s
 `--all-features` selects the same tests as the coverage run's default.
 
+`tests/workflow_contracts/suite_runs_once_test.py` holds the split. It reads
+commands through `tests/workflow_contracts/suite_commands.py`, which splits a
+command the way the shell does and decides whether it runs the suite. That
+module belongs to the suite-once contract alone: no other test calls it, and no
+production code depends on it. Callers pass the Makefile's default goal in, so
+a bare `make` counts as a suite run only where that goal runs the suite. Extend
+the reader by adding a spelling case to the contract, and prove it with a
+mutation of `ci.yml` that the previous reader missed.
+
 A scheduled `.github/workflows/mutation-testing.yml` workflow also runs
 `cargo-mutants` via the shared reusable workflow, daily and on manual dispatch.
 It is informational and does not gate pull requests. Dependabot keeps its
