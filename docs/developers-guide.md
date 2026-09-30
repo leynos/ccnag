@@ -37,6 +37,24 @@ a bare `make` counts as a suite run only where that goal runs the suite. Extend
 the reader by adding a spelling case to the contract, and prove it with a
 mutation of `ci.yml` that the previous reader missed.
 
+A bare `make` runs the Makefile's default goal, so the reader takes that goal
+from the Makefile (`default_goal` in `suite_commands.py`). It applies the
+`.DEFAULT_GOAL` assignments in order, as GNU make does (manual, "Other Special
+Variables"). `=` and `:=` replace the value, so the last one wins. `?=` changes
+nothing, because make defines `.DEFAULT_GOAL` itself, empty, before it reads a
+makefile. `+=` appends a word, and an empty value clears it. A value of several
+words, which make refuses, is not read, and the reader falls back to the first
+rule that is not a special or pattern target. A tab-indented line is recipe
+text, not an assignment.
+
+`test_the_reader_agrees_with_gnu_make` pins this to make itself and not to a
+reading of its manual. It runs `make -f -` with the print-database and dry-run
+options on each fixture and compares the goal make settles on (the
+`.DEFAULT_GOAL` line of the variable database) with the reader's. It needs GNU
+make and skips, printing the reason, on a host where `make` is absent or is not
+GNU make; the shared `gnu_make` fixture in
+`tests/workflow_contracts/conftest.py` makes that check.
+
 A scheduled `.github/workflows/mutation-testing.yml` workflow also runs
 `cargo-mutants` via the shared reusable workflow, daily and on manual dispatch.
 It is informational and does not gate pull requests. Dependabot keeps its
