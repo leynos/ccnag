@@ -19,9 +19,7 @@ LINKER_VARIABLE: typ.Final[str] = "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER"
 NATIVE_BUILD: typ.Final[str] = (
     f"cargo +{TOOLCHAIN} build --release --target ${{{{ matrix.target }}}}"
 )
-CROSS_BUILD: typ.Final[str] = (
-    f"cross +{TOOLCHAIN} build --release --target ${{{{ matrix.target }}}}"
-)
+CROSS_BUILD: typ.Final[str] = "cross build --release --target ${{ matrix.target }}"
 PUBLISH_IF: typ.Final[str] = (
     "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && "
     "inputs.dry-run == false && startsWith(github.ref, 'refs/tags/'))"

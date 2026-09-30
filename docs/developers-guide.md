@@ -73,8 +73,9 @@ builds six targets in one matrix, each leg with a `builder`.
   build there.
 - **Cross for the rest.** The Linux (`x86_64`, `aarch64`), Windows GNU and
   FreeBSD legs run
-  `cross +nightly-2026-08-13 build --release --target <target>` on
-  `ubuntu-latest`.
+  `cross build --release --target <target>` on `ubuntu-latest`, taking the
+  nightly from `rust-toolchain.toml`: cross composes a malformed toolchain name
+  (`nightly-2026-08-13-2026-08-13-<host>`) from an explicit dated `+toolchain`.
 - **Linker for the x86_64 Linux leg.** `.cargo/config.toml` names `clang` as
   that triple's linker for the development build (with mold). The `cross` image
   has gcc and no clang, so the cross step sets

@@ -94,9 +94,10 @@ def test_a_dropped_or_duplicated_leg_is_refused(release: Workflow, target: str) 
             "cargo",
             "cross +nightly-2026-08-13 build --release --target ${{ matrix.target }}",
         ),
+        ("cross", "cargo build --release --target ${{ matrix.target }}"),
         (
             "cross",
-            "cargo +nightly-2026-08-13 build --release --target ${{ matrix.target }}",
+            "cross +nightly-2026-08-13 build --release --target ${{ matrix.target }}",
         ),
         ("cargo", "cargo build --release --target ${{ matrix.target }}"),
     ],

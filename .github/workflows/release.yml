@@ -119,15 +119,16 @@ jobs:
         run: cargo +nightly-2026-08-13 build --release --target ${{ matrix.target }}
       - name: Build release binary (cross)
         if: matrix.builder == 'cross'
-        # Select the generated project's supported compiler explicitly and
-        # omit repository-local linker and Cranelift configuration.
+        # rust-toolchain.toml pins the same nightly as the setup step, so cross
+        # takes it from there: cross composes a malformed toolchain name from an
+        # explicit `+nightly-2026-08-13` ("nightly-2026-08-13-2026-08-13-<host>").
         env:
           # .cargo/config.toml sets `linker = "clang"` for this triple (the
           # development build links with mold through clang), but the cross
           # image has gcc and no clang. An environment value beats the config
           # file, and cross forwards CARGO_* variables into the container.
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: cc
-        run: cross +nightly-2026-08-13 build --release --target ${{ matrix.target }}
+        run: cross build --release --target ${{ matrix.target }}
       - name: Prepare artifact
         run: |
           mkdir -p artifacts/${{ matrix.os }}-${{ matrix.arch }}
