@@ -384,11 +384,12 @@ def _goal_assignment(line: str) -> tuple[str, str] | None:
 def _apply_assignment(current: str | None, operator: str, value: str) -> str | None:
     """Return ``.DEFAULT_GOAL`` after one more assignment.
 
-    ``=`` and ``:=`` replace it, ``?=`` sets it only where none is set, ``+=``
-    appends a word, and an empty result clears it.
+    ``=`` and ``:=`` replace it, ``?=`` changes nothing (make defines
+    ``.DEFAULT_GOAL`` itself, empty, before it reads a makefile, so ``?=``
+    finds it defined), ``+=`` appends a word, and an empty result clears it.
     """
     if operator == "?":
-        result = current or value
+        result = current or ""
     elif operator == "+":
         result = f"{current or ''} {value}"
     else:
