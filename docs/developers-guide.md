@@ -60,6 +60,39 @@ LLVM-compatible linker behaviour.
 Install `clang`, `lld`, `mold`, `python3`, and `cargo-audit` before running the
 full generated workflow locally on Linux.
 
+### Release builds
+
+`release.yml` runs on a `v*.*.*` tag push and on `workflow_dispatch`, and
+builds six targets in one matrix, each leg with a `builder`.
+
+- **Native macOS.** `x86_64-apple-darwin` builds on `macos-15-intel` and
+  `aarch64-apple-darwin` on `macos-latest`, with
+  `cargo +nightly-2026-08-13 build --release --target <target>`. `cross` has no
+  Docker image for Apple targets; on a Linux runner it falls back to host
+  cargo, which lacks the target and stops with E0463, so those legs could never
+  build there.
+- **Cross for the rest.** The Linux (`x86_64`, `aarch64`), Windows GNU and
+  FreeBSD legs run
+  `cross +nightly-2026-08-13 build --release --target <target>` on
+  `ubuntu-latest`.
+- **Linker for the x86_64 Linux leg.** `.cargo/config.toml` names `clang` as
+  that triple's linker for the development build (with mold). The `cross` image
+  has gcc and no clang, so the cross step sets
+  `CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=cc`. An environment value beats
+  the configuration file and `cross` forwards `CARGO_*` variables into its
+  container. The development configuration is untouched.
+- **No cancellation.** `fail-fast` is off, so one failing leg cannot hide
+  whether the others build.
+- **Dry run.** A `workflow_dispatch` builds every leg and uploads the
+  artefacts, then stops: the `release` job runs only for a tag push, or for a
+  dispatch on a tag ref that sets `dry-run` to `false`. A branch dispatch
+  therefore never publishes. Run the dispatch on a branch before tagging; it is
+  the proof that every leg builds.
+
+`tests/workflow_contracts/release_workflow_test.py` holds these clauses: each
+is proved by a mutation of a copy of the real workflow that the contract must
+refuse.
+
 ### Compiler cache (sccache)
 
 The shared `setup-rust` action gives sccache a local-disk directory under
