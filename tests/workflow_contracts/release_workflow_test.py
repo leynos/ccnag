@@ -170,3 +170,27 @@ def test_a_publish_job_that_can_run_on_a_branch_dispatch_is_refused(
     jobs(release)["release"]["if"] = condition
 
     assert _reports(release, "publish")
+
+
+@pytest.mark.parametrize("malformed", ["a bare string", 7, None, ["nested"]])
+def test_a_malformed_step_is_reported_not_a_crash(
+    release: Workflow, malformed: object
+) -> None:
+    """A step that is not a mapping is a violation, not an `AttributeError`.
+
+    The contract checker exists to report malformed workflows, so a scalar in
+    `steps` must not stop it before it names the missing build step.
+    """
+    steps = jobs(release)["build"]["steps"]
+    steps.insert(0, malformed)
+    steps[:] = [
+        step
+        for step in steps
+        if not (
+            isinstance(step, dict)
+            and step.get("if") == "matrix.builder == 'cross'"
+            and "build --release" in str(step.get("run", ""))
+        )
+    ]
+
+    assert _reports(release, "the cross step")

@@ -74,8 +74,10 @@ def build_step(workflow: Workflow, builder: str) -> dict | None:
     steps = _get(jobs(workflow).get("build"), "steps")
     guard = f"matrix.builder == '{builder}'"
     for step in steps if isinstance(steps, list) else []:
+        if not isinstance(step, dict):
+            continue
         is_build = "build --release" in str(step.get("run", ""))
-        if isinstance(step, dict) and step.get("if") == guard and is_build:
+        if step.get("if") == guard and is_build:
             return step
     return None
 
