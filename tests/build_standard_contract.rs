@@ -17,10 +17,10 @@ mod config;
 mod exhaustive;
 #[path = "build_standard_support/fixtures.rs"]
 mod fixtures;
+#[path = "build_standard_support/injected.rs"]
+mod injected;
 #[path = "build_standard_support/make.rs"]
 mod make;
-use std::fmt::Write as _;
-
 use ci_steps::{
     COVERAGE_DENIES_WARNINGS,
     Workflow,
@@ -226,7 +226,6 @@ fn the_workflow_reader_wants_the_input_on_each_step(
 /// Invariant: the step assigns `RUSTFLAGS` itself and names neither standard
 /// flag; a sibling step's assignment does not count.
 #[rstest]
-#[case::assigned(COVERAGE_OK, 0)]
 #[case::unassigned(COVERAGE_UNASSIGNED, 1)]
 #[case::with_the_frontend_flag(COVERAGE_WITH_THREADS, 1)]
 #[case::with_the_linker(COVERAGE_WITH_LINKER, 1)]
@@ -337,45 +336,21 @@ fn the_test_target_keeps_the_warning_policy(
     assert_eq!(found, expected, "target {target}: {commands:?}");
 }
 
-/// Renders canned `make -n` text for a fake runner through a fallible writer, so
-/// the fakes keep the runner's `Result` shape honestly.
-fn canned(text: std::fmt::Arguments) -> Result<String, String> {
-    let mut out = String::new();
-    out.write_fmt(text).map_err(|error| error.to_string())?;
-    Ok(out)
-}
-
-/// A fake runner: a compliant `make -n` for any target, with no process behind it.
-fn compliant_make(_target: &str, host: Host) -> Result<String, String> {
-    let linker = if host.takes_linker_flag() {
-        " -Clink-arg=-fuse-ld=mold"
-    } else {
-        ""
-    };
-    canned(format_args!(
-        "RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo test\n"
-    ))
-}
-
-/// A fake runner whose command loses the caller's `RUSTFLAGS`.
-fn dropping_make(_target: &str, _host: Host) -> Result<String, String> {
-    canned(format_args!("RUSTFLAGS=\"-D warnings\" cargo test\n"))
-}
-
-/// A fake runner for a target that is not defined.
-fn undefined_make(target: &str, _host: Host) -> Result<String, String> {
-    Err(format!("`make -n {target}` failed, so it is not defined"))
-}
-
-/// Scenario: a coverage step that assigns an empty warning policy, or a different one.
+/// Scenario: coverage steps that deny warnings, assign an empty policy, or assign a
+/// different one.
 ///
-/// Invariant: where the repository's coverage steps deny warnings, a step that stops
-/// doing so is a regression and is refused; where they deliberately assign other
-/// flags, the policy is not part of the contract, so neither fixture is refused.
+/// Invariant: the warning policy is pinned both ways, so every case fires in one mode.
+/// Where the repository's coverage denies warnings, a step that denies them is accepted
+/// and an empty or different policy is refused; where it deliberately does not, a step
+/// that starts denying warnings is the drift and is refused, while the others are accepted.
 #[rstest]
-#[case::an_empty_warning_policy(COVERAGE_EMPTY_POLICY)]
-#[case::a_different_warning_policy(COVERAGE_OTHER_POLICY)]
-fn a_coverage_step_keeps_the_repositorys_warning_policy(#[case] workflow: &str) {
+#[case::denying_warnings(COVERAGE_OK, true)]
+#[case::an_empty_warning_policy(COVERAGE_EMPTY_POLICY, false)]
+#[case::a_different_warning_policy(COVERAGE_OTHER_POLICY, false)]
+fn a_coverage_step_keeps_the_repositorys_warning_policy(
+    #[case] workflow: &str,
+    #[case] denies: bool,
+) {
     let found = coverage_problems(&Workflow {
         file: "fixture.yml",
         text: workflow,
@@ -383,50 +358,7 @@ fn a_coverage_step_keeps_the_repositorys_warning_policy(#[case] workflow: &str) 
     .len();
     assert_eq!(
         found,
-        usize::from(COVERAGE_DENIES_WARNINGS),
+        usize::from(denies != COVERAGE_DENIES_WARNINGS),
         "workflow:\n{workflow}"
     );
-}
-
-/// Turns a failed expectation into the error a test returns.
-fn ensure(holds: bool, message: &str) -> Result<(), String> {
-    if holds {
-        Ok(())
-    } else {
-        Err(message.to_owned())
-    }
-}
-
-/// Scenario: the policy checks fed canned `make -n` text through the injected
-/// runner, so no process runs.
-///
-/// Invariant: a compliant command raises no complaint on either host, a command
-/// that drops the caller's flags raises one per target, and a runner error
-/// reaches the caller instead of being read as an empty output.
-#[test]
-fn the_policy_checks_run_against_an_injected_runner() -> Result<(), String> {
-    let pin = Pin::Nightly;
-    for host in [Host::Linux, Host::Darwin] {
-        let (problems, read) = development_problems(compliant_make, host, pin)?;
-        ensure(
-            problems.is_empty(),
-            &format!("a compliant fake raised {problems:?}"),
-        )?;
-        ensure(read > 0, "the fake's commands were not read")?;
-    }
-    let (dropped, _) = development_problems(dropping_make, Host::Linux, pin)?;
-    ensure(
-        !dropped.is_empty(),
-        "a command that drops the caller's flags passed",
-    )?;
-    ensure(
-        development_problems(undefined_make, Host::Linux, pin).is_err(),
-        "a runner error was swallowed",
-    )?;
-    // A repository with no coverage or release target has nothing held out to run.
-    let has_held_out_targets = held_out_target_count() > 0;
-    ensure(
-        !has_held_out_targets || held_out_problems(undefined_make).is_err(),
-        "a held-out runner error was swallowed",
-    )
 }

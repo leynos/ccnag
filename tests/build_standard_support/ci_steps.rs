@@ -59,9 +59,10 @@ impl Action {
     }
 }
 
-/// Whether this repository's coverage steps assign a `RUSTFLAGS` that denies warnings, so a
-/// step that stops doing so is a regression. A repository whose coverage deliberately assigns
-/// other flags (a different frontend flag, an alternative linker) sets this to `false`.
+/// Whether this repository's coverage steps assign a `RUSTFLAGS` that denies warnings. The
+/// policy is pinned both ways: a step that stops denying warnings is a regression where this is
+/// `true`, and a step that starts denying them is drift where a repository deliberately assigns
+/// other flags (an alternative linker, a different frontend flag) and this is `false`.
 pub const COVERAGE_DENIES_WARNINGS: bool = false;
 
 /// A step of a workflow file, found by the action it uses.
@@ -113,8 +114,8 @@ impl Step<'_> {
         let denies_warnings = value.contains("-D warnings") || value.contains("-Dwarnings");
         let reason = if names_a_standard_flag {
             "assigns a standard flag"
-        } else if COVERAGE_DENIES_WARNINGS && !denies_warnings {
-            "assigns a RUSTFLAGS that does not deny warnings"
+        } else if denies_warnings != COVERAGE_DENIES_WARNINGS {
+            "assigns a warning policy that differs from this repository's"
         } else {
             return None;
         };
