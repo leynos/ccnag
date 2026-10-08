@@ -62,6 +62,7 @@ jobs:
         run: make test-workflow-contracts
       - name: Install test runner
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           RUSTFLAGS: ""
         run: cargo binstall --no-confirm --locked cargo-nextest
       # Dependency audits report advisories against the whole lockfile, so a
@@ -71,6 +72,7 @@ jobs:
       - name: Install cargo-audit
         if: github.actor != 'dependabot[bot]'
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           RUSTFLAGS: ""
         run: cargo binstall --no-confirm cargo-audit
       - name: Setup Python for audit manifest extraction
