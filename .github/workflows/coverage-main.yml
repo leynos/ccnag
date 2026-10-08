@@ -42,6 +42,7 @@ jobs:
           # One sccache lane with ci.yml's build-test: only a push to main saves,
           # so pull requests warm from the lane main's publisher writes.
           sccache-cache-discriminator: coverage
+          install-mold: 'true'
           rustflags: -Zpolonius=next
       - name: Log Rust compiler configuration
         run: |-
