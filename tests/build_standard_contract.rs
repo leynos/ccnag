@@ -61,6 +61,7 @@ use fixtures::{
     NIGHTLY_SPELLED_APART,
     NO_BUILD_SOURCE,
     NO_CHANNEL,
+    SHORT_DATED_NIGHTLY,
     SIBLING_KEY_OK,
     SPREAD_ARRAY,
     STABLE,
@@ -75,6 +76,7 @@ use fixtures::{
     TRIPLE_ONLY,
     TWO_CHANNELS,
     UNCLOSED_CHANNEL,
+    UNDATED_NIGHTLY,
     UNKNOWN_CHANNEL,
     UNQUOTED_BESIDE_VALID,
 };
@@ -177,7 +179,8 @@ fn a_rustflags_array_spread_over_lines_is_refused() -> Result<(), String> {
 ///
 /// Invariant: only a `nightly` channel reads as nightly, so only it is asked to
 /// carry `-Zthreads`; a missing, repeated, unknown or malformed channel is an
-/// error, not a stable pin by default, and a comment after the quote is fine.
+/// error, not a stable pin by default, and a comment after the quote is fine. A
+/// nightly is `nightly` or `nightly-YYYY-MM-DD`; any other suffix is unknown.
 #[rstest]
 #[case::nightly(Fixture(NIGHTLY), Some(Pin::Nightly))]
 #[case::stable(Fixture(STABLE), Some(Pin::Stable))]
@@ -186,6 +189,8 @@ fn a_rustflags_array_spread_over_lines_is_refused() -> Result<(), String> {
 #[case::unknown(Fixture(UNKNOWN_CHANNEL), None)]
 #[case::unquoted_beside_a_valid_one(Fixture(UNQUOTED_BESIDE_VALID), None)]
 #[case::no_closing_quote(Fixture(UNCLOSED_CHANNEL), None)]
+#[case::an_undated_nightly(Fixture(UNDATED_NIGHTLY), None)]
+#[case::a_date_that_is_not_padded(Fixture(SHORT_DATED_NIGHTLY), None)]
 #[case::content_after_the_quote(Fixture(TRAILING_CONTENT), None)]
 #[case::comment_after_the_quote(Fixture(COMMENT_AFTER_CHANNEL), Some(Pin::Stable))]
 fn the_pin_reader_tells_the_channels_apart(
