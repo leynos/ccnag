@@ -16,6 +16,9 @@ set.
   for Comments (RFC), and roadmap conventions used by this documentation set.
 - [Polonius borrow-checker policy](polonius.md) records the nightly compiler
   contract, borrow-centric design rules, and audit tags used by this project.
+- [ADR 001: Rust build standard](adr-001-rust-build-standard.md) records why
+  development builds use the parallel frontend, `mold` and Cranelift while
+  coverage and release builds stay off them.
 
 ## Rust reference material
 

@@ -22,6 +22,31 @@ Development builds use Cranelift for debug code generation. On Linux targets,
 link quickly. Coverage generation uses `lld` instead because LLVM coverage
 tools expect LLVM-compatible linker behaviour.
 
+### Build standard
+
+Development builds (`make test`, `make lint`, `make typecheck` and the debug
+build) use the parallel `rustc` frontend (`-Zthreads=8`) alongside
+`-Zpolonius=next`, and on Linux the `mold` linker. Install `mold` and `clang`
+before building on Linux: the configuration names them, so a build without them
+fails at link time.
+
+The flags live in `.cargo/config.toml`, but Cargo applies exactly one
+`rustflags` source and an assigned `RUSTFLAGS` replaces every configuration
+source. The Makefile therefore restates the flags in each recipe and keeps any
+`RUSTFLAGS` you set, appending the standard flags after yours. Two builds are
+held out on purpose:
+
+- `make coverage` assigns its own flags, links with `lld` and selects the LLVM
+  backend (`CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm`), because Cranelift cannot
+  instrument code and a measurement should not depend on the fast flags.
+- `make release` keeps your `RUSTFLAGS` and adds only the warning deny and the
+  borrow-checker flag, so a shipped artefact links with the platform linker. A
+  bare `cargo build --release` is different: it takes the configuration's flags
+  unless you assign `RUSTFLAGS` yourself, for example
+  `RUSTFLAGS="" cargo build --release`.
+
+See [ADR 001](adr-001-rust-build-standard.md) for the reasoning.
+
 ## Validation and Environment Policy
 
 This project denies `unknown_lints`, `renamed_and_removed_lints`,

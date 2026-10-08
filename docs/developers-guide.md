@@ -257,6 +257,16 @@ development target on a Linux host and a macOS host (each keeping the caller's
 own `RUSTFLAGS`) and for each coverage and release target on a Linux host, and
 the `setup-rust` steps of the CI workflows (each must pass `install-mold`), so
 a flag lost through a recipe or workflow edit fails there.
+`tests/workflow_contracts/build_standard_test.py` reads the same workflows as
+YAML, so a `setup-rust` step is judged by its own mapping: the action must be
+named whole at a commit SHA and `install-mold: 'true'` must sit under `with:`
+(a key beside `uses:` does not count). The release workflow ships from the
+platform linker and is left out.
+`tests/workflow_contracts/coverage_backend_test.py` reads `make -n coverage`
+and requires the `cargo llvm-cov` command to assign
+`CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm`. Run both with
+`make test-workflow-contracts`. The decision is recorded in
+[ADR 001](adr-001-rust-build-standard.md).
 
 ### Cranelift
 
