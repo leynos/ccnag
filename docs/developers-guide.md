@@ -28,6 +28,34 @@ step runs the same tests `make test` runs except the doctests, which
 second time and was removed. The crate declares no features, so `make test`'s
 `--all-features` selects the same tests as the coverage run's default.
 
+`tests/workflow_contracts/suite_runs_once_test.py` holds the split. It reads
+commands through `tests/workflow_contracts/suite_commands.py`, which splits a
+command the way the shell does and decides whether it runs the suite. That
+module belongs to the suite-once contract alone: no other test calls it, and no
+production code depends on it. Callers pass the Makefile's default goal in, so
+a bare `make` counts as a suite run only where that goal runs the suite. Extend
+the reader by adding a spelling case to the contract, and prove it with a
+mutation of `ci.yml` that the previous reader missed.
+
+A bare `make` runs the Makefile's default goal, so the reader takes that goal
+from the Makefile (`default_goal` in `suite_commands.py`). It applies the
+`.DEFAULT_GOAL` assignments in order, as GNU make does (manual, "Other Special
+Variables"). `=` and `:=` replace the value, so the last one wins. `?=` changes
+nothing, because make defines `.DEFAULT_GOAL` itself, empty, before it reads a
+makefile. `+=` appends a word, and an empty `+=` keeps the current value. An
+empty `=` or `:=` assignment clears the value. A value of several words, which
+make refuses, is not read, and the reader falls back to the first rule that is
+not a special or pattern target. A tab-indented line is recipe text, not an
+assignment.
+
+`test_the_reader_agrees_with_gnu_make` pins this to make itself and not to a
+reading of its manual. It runs `make -f -` with the print-database and dry-run
+options on each fixture and compares the goal make settles on (the
+`.DEFAULT_GOAL` line of the variable database) with the reader's. It needs GNU
+make and skips, printing the reason, on a host where `make` is absent or is not
+GNU make; the shared `gnu_make` fixture in
+`tests/workflow_contracts/conftest.py` makes that check.
+
 A scheduled `.github/workflows/mutation-testing.yml` workflow also runs
 `cargo-mutants` via the shared reusable workflow, daily and on manual dispatch.
 It is informational and does not gate pull requests. Dependabot keeps its
@@ -59,6 +87,40 @@ LLVM-compatible linker behaviour.
 
 Install `clang`, `lld`, `mold`, `python3`, and `cargo-audit` before running the
 full generated workflow locally on Linux.
+
+### Release builds
+
+`release.yml` runs on a `v*.*.*` tag push and on `workflow_dispatch`, and
+builds six targets in one matrix, each leg with a `builder`.
+
+- **Native macOS.** `x86_64-apple-darwin` builds on `macos-15-intel` and
+  `aarch64-apple-darwin` on `macos-latest`, with
+  `cargo +nightly-2026-08-13 build --release --target <target>`. `cross` has no
+  Docker image for Apple targets; on a Linux runner it falls back to host
+  cargo, which lacks the target and stops with E0463, so those legs could never
+  build there.
+- **Cross for the rest.** The Linux (`x86_64`, `aarch64`), Windows GNU and
+  FreeBSD legs run `cross build --release --target <target>` on
+  `ubuntu-latest`, taking the nightly from `rust-toolchain.toml`: cross
+  composes a malformed toolchain name (`nightly-2026-08-13-2026-08-13-<host>`)
+  from an explicit dated `+toolchain`.
+- **Linker for the x86_64 Linux leg.** `.cargo/config.toml` names `clang` as
+  that triple's linker for the development build (with mold). The `cross` image
+  has gcc and no clang, so the cross step sets
+  `CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=cc`. An environment value beats
+  the configuration file and `cross` forwards `CARGO_*` variables into its
+  container. The development configuration is untouched.
+- **No cancellation.** `fail-fast` is off, so one failing leg cannot hide
+  whether the others build.
+- **Dry run.** A `workflow_dispatch` builds every leg and uploads the
+  artefacts, then stops: the `release` job runs only for a tag push, or for a
+  dispatch on a tag ref that sets `dry-run` to `false`. A branch dispatch
+  therefore never publishes. Run the dispatch on a branch before tagging; it is
+  the proof that every leg builds.
+
+`tests/workflow_contracts/release_workflow_test.py` holds these clauses: each
+is proved by a mutation of a copy of the real workflow that the contract must
+refuse.
 
 ### Compiler cache (sccache)
 

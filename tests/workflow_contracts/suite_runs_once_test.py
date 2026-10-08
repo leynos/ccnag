@@ -11,9 +11,8 @@ and was removed.
 These tests hold the split:
 
 - no workflow step runs the suite outside the coverage step, in any spelling
-  of ``make test``, ``make all``, ``cargo test``, ``cargo nextest`` or
-  ``cargo llvm-cov``, options before the subcommand included, except the one
-  doctest step in ``build-test``;
+  ``suite_commands`` recognizes, except the one doctest step in
+  ``build-test``;
 - ``build-test`` runs, with no job-level condition, the doctests and the
   coverage action, each in one unconditional step;
 - the coverage step passes only the inputs this repository has always passed.
@@ -25,12 +24,14 @@ These tests hold the split:
 
 from __future__ import annotations
 
+import os
 import pathlib
-import re
+import subprocess
+import tomllib
 
 import pytest
-import tomllib
 import yaml
+from suite_commands import default_goal, runs_suite
 
 REPOSITORY_ROOT = pathlib.Path(__file__).resolve().parents[2]
 WORKFLOWS = REPOSITORY_ROOT / ".github" / "workflows"
@@ -43,20 +44,13 @@ DOCTEST_ENV = {
     "RUSTFLAGS": "-D warnings -Zpolonius=next -Zthreads=8 -C link-arg=-fuse-ld=mold",
     "RUSTDOCFLAGS": "--cfg docsrs -D warnings -Zpolonius=next",
 }
+#: The default goal the spelling cases assume: one that runs the suite.
+SUITE_GOAL = "all"
 SUITE_JOB = "ci.yml/build-test"
 #: The coverage inputs this repository passes. The pinned action declares no
 #: doctest input, so the contract holds the inputs to this set rather than
 #: asserting an input the action would ignore.
 COVERAGE_INPUTS = frozenset({"output-path", "format", "with-ratchet"})
-CARGO_VALUE_OPTIONS = frozenset(
-    {"--config", "-Z", "-C", "--manifest-path", "--color", "--target-dir"}
-)
-MAKE_VALUE_OPTIONS = frozenset(
-    {"-C", "-f", "-I", "-o", "-W", "--directory", "--file", "--makefile"}
-)
-SUITE_SUBCOMMANDS = frozenset({"test", "nextest", "llvm-cov"})
-SUITE_TARGETS = frozenset({"test", "all"})
-SEPARATORS = re.compile(r"&&|\|\||[;|\n]")
 DEPENDENCY_TABLES = ("dependencies", "dev-dependencies", "build-dependencies")
 
 
@@ -75,54 +69,6 @@ def _jobs() -> list[tuple[str, dict]]:
 def _steps() -> list[tuple[str, dict]]:
     """Return every step of every workflow, labelled by file and job."""
     return [(where, step) for where, job in _jobs() for step in job.get("steps") or []]
-
-
-def _operands(words: list[str], value_options: frozenset[str]) -> list[str]:
-    """Return a command's operands: its words less options and their values."""
-    found: list[str] = []
-    skip = False
-    for word in words:
-        if skip:
-            skip = False
-        elif word in value_options:
-            skip = True
-        elif not word.startswith(("-", "+")) and "=" not in word:
-            found.append(word)
-    return found
-
-
-def _arguments_of(words: list[str], program: str) -> list[str] | None:
-    """Return the words after ``program`` in one shell segment, if it runs."""
-    for index, word in enumerate(words):
-        if word == program or word.endswith(f"/{program}"):
-            return words[index + 1 :]
-    return None
-
-
-def _segment_runs_suite(words: list[str]) -> bool:
-    """Report whether one shell segment runs the suite."""
-    cargo = _arguments_of(words, "cargo")
-    make = _arguments_of(words, "make")
-    cargo_operands = _operands(cargo, CARGO_VALUE_OPTIONS) if cargo else []
-    make_operands = _operands(make, MAKE_VALUE_OPTIONS) if make else []
-    return (cargo_operands[:1] and cargo_operands[0] in SUITE_SUBCOMMANDS) or bool(
-        SUITE_TARGETS & set(make_operands)
-    )
-
-
-def runs_suite(command: str) -> bool:
-    """Report whether a shell command runs the suite, in any spelling.
-
-    Examples
-    --------
-    >>> runs_suite("cargo --config tools/dev-fast/config.toml test")
-    True
-    >>> runs_suite("cargo run -- test")
-    False
-    """
-    return any(
-        _segment_runs_suite(segment.split()) for segment in SEPARATORS.split(command)
-    )
 
 
 def _dependency_tables(manifest: dict) -> list[object]:
@@ -163,23 +109,152 @@ def _declares_features(manifest: dict) -> bool:
         ("cargo +nightly test", True),
         ("cargo llvm-cov nextest --lcov", True),
         ("set -eu && make test", True),
+        ("make", True),
+        ('make "test"', True),
+        ("make coverage", True),
+        ("make lint&&make test", True),
+        ("RUSTFLAGS='-D warnings' cargo test", True),
+        ("env RUN_ACT_VALIDATION=1 make test", True),
+        ("make \\\ntest", True),
+        ("make lint # then\nmake test", True),
         ("make test-workflow-contracts", False),
         ("make lint", False),
         ("cargo build --all-targets", False),
         ("cargo run -- test", False),
+        ("echo cargo test", False),
+        ("echo 'pre;make test;post'", False),
+        ("# make test", False),
+        ("if true; then cargo test; fi", True),
+        ("(cd crate && cargo test)", True),
+        ("timeout 30m make test", True),
+        ("bash -c 'cargo test'", True),
+        ("NAME=foo#bar make test", True),
+        ("make test#notes", False),
+        ("bash scripts/check.sh", False),
+        ("nohup cargo test", True),
+        ("sudo -u ci make test", True),
+        ("bash -lc 'make test'", True),
+        ("sh -ec 'make test'", True),
+        ("bash -c 'cargo' test", False),
+        ("make -j 4", True),
+        ("make -l 4", True),
+        ("make -j test", True),
+        ("make -j lint", False),
+        ("make >suite.log", True),
+        ("make >> suite.log 2>&1", True),
+        ("make 2> err.log test", True),
+        ("make test > out.log", True),
+        ("make lint > suite.log", False),
+        ('make ">x"', False),
+        ("make < in.txt lint", False),
+        ("command pytest -v", True),
+        ("command -v pytest", False),
+        ("pytest --collect-only", False),
+        ("pytest --co -q", False),
+        ("pytest --help", False),
+        ("pytest --version", False),
+        ("python -m pytest --fixtures", False),
+        ("uv run pytest --markers", False),
+        ("uvx pytest --collect-only", False),
+        ("timeout 5m pytest --setup-plan", False),
+        ("pytest -q tests", True),
+        ("cargo te\\\nst", True),
+        ("make\\\ntest", False),
+        ("make -j 4 lint", False),
+        ("make --jobs 4", True),
+        ('echo "a \\" ; make test"', False),
+        ('echo "a \\" b" ; make test', True),
+        ("pytest tests", True),
+        ("py.test", True),
+        ("python -m pytest", True),
+        ("python3.13 -m pytest", True),
+        ("uvx pytest", True),
+        ("uv run pytest", True),
+        ("uv run --with pytest python -m pytest", True),
+        ("python script.py", False),
+        ("make dev-test", True),
+        ("make test-fast", True),
+        ("echo 'make test", False),
+        ('make "test', True),
+        ("", False),
+        ("&", False),
+        ("make -n", False),
+        ("make -ns", False),
+        ("make --help", False),
+        ("command -v make", False),
+        ("uv run --directory . cargo test", True),
+        ("echo ok # ; make test", False),
     ],
 )
 def test_the_suite_pattern(command: str, *, expected: bool) -> None:
     """Recognize every spelling of a suite run, and nothing longer."""
-    assert runs_suite(command) is expected, command
+    assert runs_suite(command, SUITE_GOAL) is expected, command
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "env -u HOME",
+        "timeout -s KILL 5m",
+        "nice -n 5",
+        "command",
+        "exec -a name",
+        "nohup",
+        "setsid",
+        "stdbuf -oL",
+        "sudo -u ci",
+        "uv run --directory .",
+    ],
+)
+def test_every_wrapper_is_looked_through(prefix: str) -> None:
+    """Look through each wrapper, with an option of its own, to its command."""
+    assert runs_suite(f"{prefix} make test", SUITE_GOAL), prefix
+    assert not runs_suite(f"{prefix} make lint", SUITE_GOAL), prefix
+
+
+@pytest.mark.parametrize(
+    ("goal", "expected"), [("build", False), ("all", True), ("test", True)]
+)
+def test_a_bare_make_runs_the_default_goal(goal: str, *, expected: bool) -> None:
+    """Read a bare ``make`` as a suite run only when the default goal is one."""
+    assert runs_suite("make", goal) is expected
+
+
+@pytest.mark.parametrize(
+    ("makefile", "expected"),
+    [
+        (".PHONY: a\nbuild: x\nall: y\n", "build"),
+        (".DEFAULT_GOAL := test\nbuild:\n", "test"),
+        (".DEFAULT_GOAL ?= test\nbuild:\n", "build"),
+        (".DEFAULT_GOAL += test\nbuild:\n", "test"),
+        (".DEFAULT_GOAL = test\nbuild:\n", "test"),
+        (".DEFAULT_GOAL := first\n.DEFAULT_GOAL := second\nbuild:\n", "second"),
+        (".DEFAULT_GOAL := first\n.DEFAULT_GOAL ?= second\nbuild:\n", "first"),
+        (".DEFAULT_GOAL ?= second\n.DEFAULT_GOAL := first\nbuild:\n", "first"),
+        (".DEFAULT_GOAL := build\nlint:\n.DEFAULT_GOAL := test\n", "test"),
+        (".DEFAULT_GOAL := first\n.DEFAULT_GOAL :=\nbuild:\n", "build"),
+        (".DEFAULT_GOAL := first\n.DEFAULT_GOAL +=\nbuild:\n", "first"),
+        (".DEFAULT_GOAL := first\n.DEFAULT_GOAL += second\nbuild:\n", "build"),
+        (".DEFAULT_GOAL   :=   spaced\nbuild:\n", "spaced"),
+        ("first:\n\t.DEFAULT_GOAL = test\n", "first"),
+        ("# build: not a rule\nrun: z\n", "run"),
+        (".PHONY: a\n.SUFFIXES:\nrun: z\n", "run"),
+        ("X := 1\n\tfoo: bar\n%.o: %.c\nrun: z\n", "run"),
+        ("X := 1\n", ""),
+    ],
+)
+def test_the_default_goal_is_read(makefile: str, expected: str) -> None:
+    """Read the default goal the way make does."""
+    assert default_goal(makefile) == expected
 
 
 def test_only_the_doctest_step_runs_the_suite_outside_coverage() -> None:
     """Refuse any suite run but one doctest run in ``build-test``."""
+    goal = default_goal((REPOSITORY_ROOT / "Makefile").read_text(encoding="utf-8"))
     runs = [
         (where, str(step.get("run", "")).strip())
         for where, step in _steps()
-        if runs_suite(str(step.get("run", "")))
+        if runs_suite(str(step.get("run", "")), goal)
     ]
     doctests = [run for run in runs if run == (SUITE_JOB, DOCTEST_COMMAND)]
     repeated = [run for run in runs if run != (SUITE_JOB, DOCTEST_COMMAND)]
@@ -241,3 +316,102 @@ def test_an_optional_dependency_counts_as_a_feature() -> None:
     )
     assert _declares_features({"features": {"extra": []}})
     assert not _declares_features({"dependencies": {"serde": {"version": "1"}}})
+
+
+@pytest.mark.parametrize(
+    "target", ["test", "all", "coverage", "dev-test", "test-fast"]
+)
+def test_every_suite_target_runs_the_suite(target: str) -> None:
+    """Read each suite target as a suite run, and a longer name as none."""
+    assert runs_suite(f"make {target}", "build")
+    assert runs_suite(f"make -j 4 {target}", "build")
+    assert not runs_suite(f"make {target}-not", "build")
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--just-print",
+        "--dry-run",
+        "--recon",
+        "-n",
+        "--question",
+        "-q",
+        "--help",
+        "--version",
+        "-v",
+        "-ns",
+    ],
+)
+def test_every_inert_make_option_runs_no_goal(option: str) -> None:
+    """Refuse to read a make option that runs no goal as a suite run."""
+    assert not runs_suite(f"make {option}", "all")
+    assert not runs_suite(f"make {option} test", "all")
+    assert not runs_suite(f"make test {option}", "all")
+
+
+@pytest.mark.parametrize(
+    "line", ["command -v make test", "command -V make test", "command -V make"]
+)
+def test_command_lookup_runs_nothing(line: str) -> None:
+    """Read `command -v` and `command -V` as running nothing."""
+    assert not runs_suite(line, "all")
+
+
+def _make_default_goal(makefile: str, gnu_make: str) -> str | None:
+    """Return the default goal GNU make itself settles on, or ``None``.
+
+    ``make -pn`` prints the variable database without running a recipe, and
+    ``.DEFAULT_GOAL`` is the value make settled on after reading every
+    assignment (GNU make manual, "Other Special Variables").
+    """
+    result = subprocess.run(  # noqa: S603 - a fixed command and a fixture
+        [gnu_make, "-f", "-", "-pn"],
+        input=makefile,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={"PATH": os.environ["PATH"]},
+    )
+    if result.returncode:
+        return None
+    for line in result.stdout.splitlines():
+        name, _, value = line.replace(" := ", " = ").partition(" = ")
+        if name == ".DEFAULT_GOAL":
+            return value
+    return None
+
+
+MAKE_FIXTURES = [
+    ".PHONY: a\nbuild: x\nx:\n",
+    ".DEFAULT_GOAL := test\nbuild:\ntest:\n",
+    ".DEFAULT_GOAL ?= test\nbuild:\ntest:\n",
+    ".DEFAULT_GOAL = test\nbuild:\ntest:\n",
+    ".DEFAULT_GOAL := first\n.DEFAULT_GOAL := second\nfirst:\nsecond:\nbuild:\n",
+    ".DEFAULT_GOAL := first\n.DEFAULT_GOAL ?= second\nfirst:\nsecond:\n",
+    ".DEFAULT_GOAL ?= second\n.DEFAULT_GOAL := first\nfirst:\nsecond:\n",
+    ".DEFAULT_GOAL := build\nbuild:\ntest:\n.DEFAULT_GOAL := test\n",
+    ".DEFAULT_GOAL := first\n.DEFAULT_GOAL :=\nbuild:\nfirst:\n",
+    ".DEFAULT_GOAL += test\nbuild:\ntest:\n",
+    ".DEFAULT_GOAL := first\n.DEFAULT_GOAL +=\nbuild:\nfirst:\n",
+    "# build: not a rule\nrun:\n",
+    ".PHONY: a\n.SUFFIXES:\nrun:\n",
+    "first:\n\t@: .DEFAULT_GOAL = test\nsecond:\n",
+]
+
+
+@pytest.mark.parametrize("makefile", MAKE_FIXTURES)
+def test_the_reader_agrees_with_gnu_make(makefile: str, gnu_make: str) -> None:
+    """Pin the default-goal reader to make itself, not to a reading of its manual."""
+    by_make = _make_default_goal(makefile, gnu_make)
+    assert by_make is not None, "make must accept the fixture"
+    assert default_goal(makefile) == by_make, makefile
+
+
+def test_make_refuses_several_words_and_the_reader_does_not_read_them(
+    gnu_make: str,
+) -> None:
+    """Fall back to the first rule where make refuses a multi-word goal."""
+    makefile = ".DEFAULT_GOAL := first\n.DEFAULT_GOAL += second\nbuild:\nfirst:\nsecond:\n"
+    assert _make_default_goal(makefile, gnu_make) is None
+    assert default_goal(makefile) == "build"

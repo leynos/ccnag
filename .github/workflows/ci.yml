@@ -14,7 +14,6 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       BUILD_PROFILE: debug
-      WHITAKER_INSTALLER_VERSION: '0.2.6'
     steps:
       - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
         with:
@@ -23,7 +22,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Setup Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@8a83824b29dfe8f861714b544dc85fb925ed010c
+        uses: leynos/shared-actions/.github/actions/setup-rust@6cec89bac47a21cf756d68d638a9a510998e57f8
         with:
           expect-cache: any
           # One sccache lane with coverage-main.yml's publisher: only a push to main saves,
@@ -81,30 +80,10 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: '3.x'
-      - name: Cache Whitaker installation
-        id: cache-whitaker
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
-        with:
-          path: |
-            ~/.cargo/bin/whitaker-installer
-            ~/.local/bin/whitaker
-            ~/.dylint_drivers
-            ~/.local/share/whitaker
-          key: whitaker-v3-${{ runner.os }}-${{ env.WHITAKER_INSTALLER_VERSION }}
       - name: Install Whitaker
-        env:
-          RUSTFLAGS: ""
-          WHITAKER_CACHE_HIT: ${{ steps.cache-whitaker.outputs.cache-hit }}
-        run: |
-          set -euo pipefail
-          echo "Whitaker cache hit: ${WHITAKER_CACHE_HIT}"
-          if [ "${WHITAKER_CACHE_HIT}" != "true" ]; then
-            echo "Installing whitaker-installer ${WHITAKER_INSTALLER_VERSION}"
-            cargo binstall --no-confirm --locked \
-              whitaker-installer@"${WHITAKER_INSTALLER_VERSION}"
-          fi
-          whitaker-installer --cranelift
-          echo "Whitaker binary: $(command -v whitaker || true)"
+        uses: leynos/shared-actions/.github/actions/install-whitaker@6dea5677a84fec60ca51b07202570e3af12ffdb4
+        with:
+          cranelift: true
       - name: Audit dependencies
         if: github.actor != 'dependabot[bot]'
         run: make audit
@@ -117,7 +96,7 @@ jobs:
           echo "Coverage CFLAGS: -fuse-ld=lld"
           echo "Coverage LDFLAGS: -fuse-ld=lld"
       - name: Test and Measure Coverage
-        uses: leynos/shared-actions/.github/actions/generate-coverage@47b337e4f230b591891656534d4ffad868131740
+        uses: leynos/shared-actions/.github/actions/generate-coverage@6cec89bac47a21cf756d68d638a9a510998e57f8
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
           RUSTFLAGS: -Zpolonius=next -C link-arg=-fuse-ld=lld
