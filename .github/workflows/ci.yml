@@ -49,7 +49,7 @@ jobs:
         with:
           globs: '**/*.md'
       - name: Setup uv
-        uses: astral-sh/setup-uv@12d13f90bc3a5a1971bebad4beb09a4dfa962e91
+        uses: astral-sh/setup-uv@b06acff4b6a41bdd9cdac56507ead0bd7734e757
       - name: Check spelling
         run: make spelling
       - name: Workflow contracts
