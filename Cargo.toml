@@ -100,4 +100,5 @@ invalid_codeblock_attributes        = "deny"
 unescaped_backticks                 = "deny"
 
 [dev-dependencies]
+serde_norway = "0.9.42"
 rstest = "0.26.1"
