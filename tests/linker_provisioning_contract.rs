@@ -59,6 +59,25 @@ fn pinned_to<'a>(nodes: &[&'a Value], prefix: &str) -> Vec<&'a Value> {
         .collect()
 }
 
+/// Returns a complaint when more nodes name `prefix` than pin it to a full SHA,
+/// so an unpinned reference cannot hide beside a correctly pinned one.
+fn unpinned_references(nodes: &[&Value], prefix: &str, pinned: usize) -> Vec<String> {
+    let named = nodes
+        .iter()
+        .filter_map(|node| node.get("uses").and_then(Value::as_str))
+        .filter(|uses| uses.starts_with(prefix))
+        .count();
+    (named > pinned)
+        .then(|| {
+            format!(
+                "{} setup-rust reference(s) not pinned to a full commit SHA",
+                named - pinned
+            )
+        })
+        .into_iter()
+        .collect()
+}
+
 /// Returns the complaints about one node's `with:` mapping: each linker input
 /// that is not the string `'true'`.
 fn missing_inputs(node: &Value, owner: &str) -> Vec<String> {
@@ -145,11 +164,13 @@ fn problems(text: &str) -> Vec<String> {
     if steps.is_empty() && calls.is_empty() {
         return vec!["no setup-rust step pinned to a full commit SHA".to_owned()];
     }
-    let mut found: Vec<String> = steps
-        .iter()
-        .enumerate()
-        .flat_map(|(n, step)| missing_inputs(step, &format!("setup-rust step {}", n + 1)))
-        .collect();
+    let mut found = unpinned_references(&all, SETUP_RUST, steps.len());
+    found.extend(
+        steps
+            .iter()
+            .enumerate()
+            .flat_map(|(n, step)| missing_inputs(step, &format!("setup-rust step {}", n + 1))),
+    );
     found.extend(calls.into_iter().flat_map(mutation_problems));
     found.extend(
         hand_installs(&all)
@@ -333,4 +354,19 @@ fn a_mutation_call_forwarding_both_inputs_passes() {
 )]
 fn a_mutation_call_is_checked_too(#[case] with_block: &str, #[case] expected: &str) {
     assert_reports(&mutation(with_block), expected);
+}
+
+#[test]
+fn an_unpinned_reference_beside_a_pinned_one_is_reported() {
+    let other = format!("      - name: Other\n        uses: {SETUP_RUST}main\n");
+
+    assert_reports(&job(BOTH, &other), "not pinned to a full commit SHA");
+}
+
+#[test]
+fn a_duplicated_input_is_reported_as_a_parse_failure() {
+    let with_block = "        with:\n          install-mold: 'true'\n          install-mold: \
+                      'true'\n          install-clang-lld: 'true'\n";
+
+    assert_reports(&job(with_block, ""), "does not parse");
 }
