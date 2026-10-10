@@ -29,19 +29,15 @@ jobs:
     permissions:
       contents: read
       id-token: write # OIDC workflow-source resolution
-    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@2b04a1ac2f4bfeb75804b44b46acf29a23c8d595
+    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@b804b69fa7f978cf9091b9d9bd5481d8ce58c2ea
     with:
       # Match the CI baseline (`make test` runs --all-targets
       # --all-features) so the test command exercised against mutants
       # mirrors what gates pull requests.
       extra-args: "--all-features"
       # .cargo/config.toml links Linux dev targets with clang and
-      # -fuse-ld=mold, so the mutants jobs need the same packages that
-      # ci.yml installs before any cargo command runs on a bare
-      # ubuntu-latest runner. The reusable workflow executes these under
-      # bash with `set -euo pipefail`.
-      setup-commands: |
-        export DEBIAN_FRONTEND=noninteractive
-        # mold accelerates dev builds; coverage uses lld for llvm-tools compatibility.
-        sudo apt-get update \
-          && sudo apt-get install --yes --no-install-recommends clang lld mold
+      # -fuse-ld=mold, so the mutants jobs need the same linkers that
+      # ci.yml installs through setup-rust before any cargo command runs
+      # on a bare ubuntu-latest runner.
+      install-mold: 'true'
+      install-clang-lld: 'true'
