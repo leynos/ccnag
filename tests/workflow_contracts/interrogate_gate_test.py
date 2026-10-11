@@ -90,6 +90,7 @@ def test_the_flags_demand_a_full_exact_report() -> None:
     assert flags[flags.index("--fail-under") + 1] == "100"
     assert "-vv" in flags
     if _tracked("*.pyi"):
+        assert "--ext" in flags, "stubs need --ext pyi"
         assert flags[flags.index("--ext") + 1] == "pyi", "stubs need --ext pyi"
     relaxing = [f for f in flags if f.startswith(("--ignore", "--exclude", "-e"))]
     assert not relaxing, f"no ignore or exclude flag may relax the gate: {relaxing}"
