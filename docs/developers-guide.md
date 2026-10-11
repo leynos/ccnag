@@ -5,19 +5,24 @@ This guide explains the contributor workflow for the generated ccnag project.
 ## Local Workflow
 
 Use `make all` as the public entrypoint for formatting, linting, and tests.
-`make lint` runs rustdoc, Clippy, and Whitaker. `make test` prefers
-`cargo nextest run` and falls back to `cargo test` when cargo-nextest is not
-available. `make check-fmt` verifies Rust formatting with
-`cargo fmt --all -- --check`, and `make fmt` formats Rust sources with nightly
-`rustfmt` and Markdown with `mdformat`. `make typecheck` type-checks without
-building via `cargo check`. `make audit` derives the Rust workspace root with
-`cargo metadata`, logs workspace member manifests, and runs `cargo audit` once
-from the workspace root. PR CI skips `make audit` and the audit-only setup when
-`github.actor` is `dependabot[bot]`; that keeps whole-lockfile advisories from
-blocking unrelated Dependabot PRs while human PRs retain the audit gate. The
-compensating control is `.github/workflows/audit.yml`, which runs weekly and
-can also be triggered manually. `make coverage` uses `cargo llvm-cov` with
-`lld`.
+`make lint` runs `make interrogate`, rustdoc, Clippy, and Whitaker. The
+`interrogate` target runs interrogate 1.7.0 through `uv tool run` and requires
+a docstring on every definition under `tests` (an `INTERROGATE_TARGETS` entry
+per Python directory), printing every definition and failing on any `MISSED`
+row because interrogate rounds its percentage to one decimal.
+`tests/workflow_contracts/interrogate_gate_test.py` asserts that wiring and
+runs the target against a stub tool. `make test` prefers `cargo nextest run`
+and falls back to `cargo test` when cargo-nextest is not available.
+`make check-fmt` verifies Rust formatting with `cargo fmt --all -- --check`, and
+`make fmt` formats Rust sources with nightly `rustfmt` and Markdown with
+`mdformat`. `make typecheck` type-checks without building via `cargo check`.
+`make audit` derives the Rust workspace root with `cargo metadata`, logs
+workspace member manifests, and runs `cargo audit` once from the workspace
+root. PR CI skips `make audit` and the audit-only setup when `github.actor` is
+`dependabot[bot]`; that keeps whole-lockfile advisories from blocking unrelated
+Dependabot PRs while human PRs retain the audit gate. The compensating control
+is `.github/workflows/audit.yml`, which runs weekly and can also be triggered
+manually. `make coverage` uses `cargo llvm-cov` with `lld`.
 
 The test suite runs once per pull request, in `ci.yml`'s coverage step. That
 step runs the same tests `make test` runs except the doctests, which

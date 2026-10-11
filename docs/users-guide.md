@@ -65,11 +65,12 @@ behind `Mutex`, `OnceLock`, or `serial_test`. The only mutation exception is an
 end-to-end test using `assert_cmd`: `Command::env` and `Command::env_clear`
 configure the isolated child process, not the test harness.
 
-`make lint` builds documentation with Rustdoc warnings denied before running
-Clippy and Whitaker. `make test` exports warning-denial flags to the selected
-test runner and separately runs all-feature workspace doctests with Rustdoc
-warnings denied. A warning from normal tests, the documentation build, or a
-doctest therefore fails the command.
+`make lint` first runs `make interrogate`, which needs `uv` and requires a
+docstring on every Python definition under `tests`, then builds documentation
+with Rustdoc warnings denied before running Clippy and Whitaker. `make test`
+exports warning-denial flags to the selected test runner and separately runs
+all-feature workspace doctests with Rustdoc warnings denied. A warning from
+normal tests, the documentation build, or a doctest therefore fails the command.
 
 ### Migrate an Existing Project
 
@@ -99,8 +100,9 @@ The generated `Makefile` exposes these public targets:
 - `make all` runs formatting checks, linting, tests, and spelling checks.
 - `make check-fmt` verifies Rust formatting.
 - `make fmt` formats Rust and Markdown sources.
-- `make lint` builds documentation, then runs Clippy and Whitaker, with every
-  warning denied.
+- `make lint` checks Python docstring coverage with `make interrogate` (it needs
+  `uv`; the run fails on any undocumented definition), builds documentation,
+  then runs Clippy and Whitaker, with every warning denied.
 - `make typecheck` type-checks the workspace without building.
 - `make test` runs `cargo nextest run` when cargo-nextest is installed and
   falls back to `cargo test` otherwise. It denies warnings in normal tests and
