@@ -175,8 +175,9 @@ cloned only on insertion, and error context is built lazily. See
 
     first checking Python docstring coverage (`make interrogate`, which needs
     `uv` and fails on any undocumented definition under `tests`), then building
-    documentation before linting every target with all features enabled. Documentation warnings, Clippy warnings, and Whitaker findings
-    fail the command.
+    documentation before linting every target with all features enabled.
+    Documentation warnings, Clippy warnings, and Whitaker findings fail the
+    command.
   - `make test` executes:
 
     ```makefile
