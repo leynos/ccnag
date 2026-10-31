@@ -47,6 +47,18 @@ held out on purpose:
 
 See [ADR 001](adr-001-rust-build-standard.md) for the reasoning.
 
+### Development build footprint
+
+Development builds keep no incremental compilation state and no debug
+information by default: `Cargo.toml` sets `incremental = false` and `debug = 0`
+in `[profile.dev]`, so `target/` stays small. `.cargo/config.toml` also sets
+`[unstable] embed-metadata = false`, the native Cargo key that makes Cargo
+coordinate metadata output itself on dated nightlies from 2026-07-31.
+
+A debugger sees no source-level debug information in a default build. To debug,
+run Cargo with `CARGO_PROFILE_DEV_DEBUG=true`; to rebuild incrementally, set
+`CARGO_INCREMENTAL=1`.
+
 ## Validation and Environment Policy
 
 This project denies `unknown_lints`, `renamed_and_removed_lints`,

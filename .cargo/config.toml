@@ -11,6 +11,9 @@ rustflags = ["-Zpolonius=next", "-Zthreads=8"]
 rustdocflags = ["-Zpolonius=next"]
 [unstable]
 codegen-backend = true
+# Native Cargo key for nightlies from 2026-07-31 (rule DF-003): Cargo
+# coordinates metadata output itself. Never use raw rustc metadata flags.
+embed-metadata = false
 
 [profile.dev]
 codegen-backend = "cranelift"

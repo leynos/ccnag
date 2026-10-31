@@ -20,6 +20,12 @@ pkg-url = "https://github.com/leynos/ccnag/releases/download/v{ version }/ccnag-
 pkg-fmt = "bin"
 disabled-strategies = ["quick-install", "compile"]
 
+# Development builds keep neither incremental state nor debug information (rule
+# DF-001, DF-002); set CARGO_PROFILE_DEV_DEBUG=true to debug.
+[profile.dev]
+incremental = false
+debug = 0
+
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 

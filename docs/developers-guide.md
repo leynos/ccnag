@@ -282,18 +282,27 @@ linker runs. `tests/linker_provisioning_contract.rs` reads the parsed
 `setup-rust` step of each CI workflow and asserts both inputs are `'true'` and
 that no step installs a linker by hand.
 
+### Development build footprint
+
+The development profile sets `incremental = false` and `debug = 0` in
+`Cargo.toml`, so a dev build keeps no incremental state or debug information
+and the target directory stays small. To debug, set
+`CARGO_PROFILE_DEV_DEBUG=true`; to rebuild incrementally, set
+`CARGO_INCREMENTAL=1`. `.cargo/config.toml` also sets
+`[unstable] embed-metadata = false`, the native Cargo key for nightlies from
+2026-07-31, so Cargo coordinates metadata output itself. No raw rustc metadata
+flags are used, and the pin is not moved to suit the key.
+`tests/workflow_contracts/build_footprint_test.py` holds all three settings.
+
 ### Cranelift
 
-Cranelift is the development-profile codegen backend. The full suite was
-measured under it on the pinned `nightly-2026-08-13` on 2026-09-29: its one
-test and one doctest pass (the crate is still the template stub; re-measure
-when real tests land). Coverage selects LLVM explicitly
+Cranelift is the development-profile codegen backend. The whole suite was
+measured under it on the pinned `nightly-2026-10-11` on 2026-10-31: `make test`
+ran 120 nextest tests and one doctest, and all pass. An earlier measurement on
+`nightly-2026-08-13` (2026-09-29) also passed. Coverage selects LLVM explicitly
 (`CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm`), because instrumentation needs it,
 and release builds use the release profile, which Cranelift does not touch.
-Re-measure the whole suite on the next toolchain bump; if it fails, record the
-failing tests here as an exception and remove the backend from
-`.cargo/config.toml`.
 
-The evidence is thin: the suite is one stub test and one doctest. When real
-tests land, re-measure the full suite under Cranelift, and if any test fails,
-record it here as an exception and remove the backend from `.cargo/config.toml`.
+Re-measure the whole suite under Cranelift on the next toolchain bump and when
+tests land; if any test fails, record it here as an exception and remove the
+backend from `.cargo/config.toml`.
