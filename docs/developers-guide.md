@@ -282,6 +282,17 @@ linker runs. `tests/linker_provisioning_contract.rs` reads the parsed
 `setup-rust` step of each CI workflow and asserts both inputs are `'true'` and
 that no step installs a linker by hand.
 
+### Development build footprint
+
+The development profile sets `incremental = false` and `debug = 0` in
+`Cargo.toml`, so a dev build keeps no incremental state or debug information
+and the target directory stays small. To debug, set
+`CARGO_PROFILE_DEV_DEBUG=true`; to rebuild incrementally, set
+`CARGO_INCREMENTAL=1`. `.cargo/config.toml` also sets
+`[unstable] embed-metadata = false`, the native Cargo key for nightlies from
+2026-07-31, so Cargo coordinates metadata output itself. No raw rustc metadata
+flags are used, and the pin is not moved to suit the key.
+
 ### Cranelift
 
 Cranelift is the development-profile codegen backend. The full suite was
