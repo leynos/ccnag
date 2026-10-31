@@ -302,10 +302,11 @@ test and one doctest pass (the crate is still the template stub; re-measure
 when real tests land). Coverage selects LLVM explicitly
 (`CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm`), because instrumentation needs it,
 and release builds use the release profile, which Cranelift does not touch. The
-pin has since moved to `nightly-2026-10-11`, so the suite has not been measured
-under the current pin. Re-measure the whole suite on that pin; if it fails,
-record the failing tests here as an exception and remove the backend from
-`.cargo/config.toml`.
+pin has since moved to `nightly-2026-10-11`, and the whole suite was measured
+under Cranelift on it on 2026-10-31: `make test` ran 120 nextest tests and one
+doctest, and all pass. Re-measure the whole suite on the next toolchain bump;
+if it fails, record the failing tests here as an exception and remove the
+backend from `.cargo/config.toml`.
 
 The evidence is thin: the suite is one stub test and one doctest. When real
 tests land, re-measure the full suite under Cranelift, and if any test fails,
