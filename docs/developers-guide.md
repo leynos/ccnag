@@ -292,6 +292,7 @@ and the target directory stays small. To debug, set
 `[unstable] embed-metadata = false`, the native Cargo key for nightlies from
 2026-07-31, so Cargo coordinates metadata output itself. No raw rustc metadata
 flags are used, and the pin is not moved to suit the key.
+`tests/workflow_contracts/build_footprint_test.py` holds all three settings.
 
 ### Cranelift
 
@@ -300,9 +301,10 @@ measured under it on the pinned `nightly-2026-08-13` on 2026-09-29: its one
 test and one doctest pass (the crate is still the template stub; re-measure
 when real tests land). Coverage selects LLVM explicitly
 (`CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm`), because instrumentation needs it,
-and release builds use the release profile, which Cranelift does not touch.
-Re-measure the whole suite on the next toolchain bump; if it fails, record the
-failing tests here as an exception and remove the backend from
+and release builds use the release profile, which Cranelift does not touch. The
+pin has since moved to `nightly-2026-10-11`, so the suite has not been measured
+under the current pin. Re-measure the whole suite on that pin; if it fails,
+record the failing tests here as an exception and remove the backend from
 `.cargo/config.toml`.
 
 The evidence is thin: the suite is one stub test and one doctest. When real
