@@ -135,6 +135,7 @@ def _compile_fixture(
     shutil.copy(ROOT / ".cargo" / "config.toml", crate / ".cargo" / "config.toml")
     env = {k: v for k, v in os.environ.items() if k not in WRAPPER_VARIABLES}
     env["CARGO_TARGET_DIR"] = str(tmp_path / "target")
+    env["CARGO_TERM_COLOR"] = "never"
     env.update(extra_env or {})
     result = subprocess.run(  # noqa: S603 - a fixed command
         ["cargo", f"+{channel}", "build", "--offline", "-v"],
