@@ -114,6 +114,43 @@ def test_a_build_step_running_the_wrong_tool_is_refused(
     assert _reports(release, f"the {builder} step")
 
 
+def _release_steps(release: Workflow) -> list[dict]:
+    """Return the build job's steps for mutation."""
+    return release["jobs"]["build"]["steps"]  # type: ignore[index,return-value]
+
+
+def test_a_setup_step_restating_the_toolchain_is_refused(release: Workflow) -> None:
+    """A `toolchain` input on any build step stops bumps reaching the release."""
+    setup = next(step for step in _release_steps(release) if "with" in step)
+    setup["with"]["toolchain"] = "nightly-2030-01-02"
+
+    assert _reports(release, "sets a toolchain")
+
+
+def test_a_target_install_naming_a_toolchain_is_refused(release: Workflow) -> None:
+    """The target install must follow the file's channel, not restate one."""
+    install = next(
+        step
+        for step in _release_steps(release)
+        if str(step.get("run", "")).startswith("rustup target add")
+    )
+    install["run"] = "rustup target add --toolchain nightly-2030-01-02 x"
+
+    assert _reports(release, "names a toolchain")
+
+
+def test_a_missing_native_target_install_is_refused(release: Workflow) -> None:
+    """The native legs need their target added before the build."""
+    steps = _release_steps(release)
+    steps[:] = [
+        step
+        for step in steps
+        if not str(step.get("run", "")).startswith("rustup target add")
+    ]
+
+    assert _reports(release, "rustup target add")
+
+
 @pytest.mark.parametrize("linker", ["clang", "", None])
 def test_a_cross_leg_linked_by_a_missing_clang_is_refused(
     release: Workflow, linker: str | None

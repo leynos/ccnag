@@ -112,6 +112,36 @@ def matrix_problems(workflow: Workflow) -> list[str]:
     return problems
 
 
+def toolchain_problems(workflow: Workflow) -> list[str]:
+    """List the build steps that restate the toolchain rust-toolchain.toml pins.
+
+    A `toolchain` input on a setup step, a `--toolchain` flag on a target
+    install, or a `+toolchain` override on a build would stop Dependabot's
+    bumps reaching the release build. The native target install must remain.
+
+    Returns
+    -------
+    list[str]
+        One message per breach.
+
+    """
+    steps = _get(jobs(workflow).get("build"), "steps")
+    problems = []
+    runs = []
+    for step in steps if isinstance(steps, list) else []:
+        if not isinstance(step, dict):
+            continue
+        if _get(step, "with", "toolchain") is not None:
+            problems.append(f"step {step.get('name') or step.get('uses')!r} sets a toolchain")
+        run = _squeeze(step.get("run", ""))
+        runs.append(run)
+        if "--toolchain" in run or " +nightly" in run or " +stable" in run:
+            problems.append(f"run {run!r} names a toolchain")
+    if not any(run.startswith("rustup target add") for run in runs):
+        problems.append("the native legs must add their target with `rustup target add`")
+    return problems
+
+
 def publish_problems(workflow: Workflow) -> list[str]:
     """List the reasons the dispatch or publish job could publish by accident.
 
@@ -148,7 +178,11 @@ def release_violations(workflow: Workflow) -> list[str]:
         One message per breach; empty when the shape holds.
 
     """
-    problems = matrix_problems(workflow) + publish_problems(workflow)
+    problems = (
+        matrix_problems(workflow)
+        + publish_problems(workflow)
+        + toolchain_problems(workflow)
+    )
     for builder, expected in (("cargo", NATIVE_BUILD), ("cross", CROSS_BUILD)):
         step = build_step(workflow, builder)
         if step is None or _squeeze(step.get("run")) != expected:
