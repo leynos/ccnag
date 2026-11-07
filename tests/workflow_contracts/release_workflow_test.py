@@ -92,23 +92,67 @@ def test_a_dropped_or_duplicated_leg_is_refused(release: Workflow, target: str) 
     [
         (
             "cargo",
-            "cross +nightly-2026-08-13 build --release --target ${{ matrix.target }}",
+            "cross build --release --target ${{ matrix.target }}",
         ),
         ("cross", "cargo build --release --target ${{ matrix.target }}"),
         (
             "cross",
-            "cross +nightly-2026-08-13 build --release --target ${{ matrix.target }}",
+            "cross +nightly build --release --target ${{ matrix.target }}",
         ),
-        ("cargo", "cargo build --release --target ${{ matrix.target }}"),
+        (
+            "cargo",
+            "cargo +nightly build --release --target ${{ matrix.target }}",
+        ),
     ],
 )
 def test_a_build_step_running_the_wrong_tool_is_refused(
     release: Workflow, builder: str, run: str
 ) -> None:
-    """A compile step that runs the wrong tool, or drops the toolchain, is refused."""
+    """A compile step running the wrong tool, or overriding the toolchain, is refused."""
     build_step(release, builder)["run"] = run  # type: ignore[index]
 
     assert _reports(release, f"the {builder} step")
+
+
+def _release_steps(release: Workflow) -> list[dict]:
+    """Return the build job's steps for mutation."""
+    return release["jobs"]["build"]["steps"]  # type: ignore[index,return-value]
+
+
+def test_a_setup_step_restating_the_toolchain_is_refused(release: Workflow) -> None:
+    """A `toolchain` input on any build step stops bumps reaching the release."""
+    setup = next(
+        step
+        for step in _release_steps(release)
+        if "shared-actions/.github/actions/setup-rust" in str(step.get("uses", ""))
+    )
+    setup["with"]["toolchain"] = "nightly-2030-01-02"
+
+    assert _reports(release, "sets a toolchain")
+
+
+def test_a_target_install_naming_a_toolchain_is_refused(release: Workflow) -> None:
+    """The target install must follow the file's channel, not restate one."""
+    install = next(
+        step
+        for step in _release_steps(release)
+        if str(step.get("run", "")).startswith("rustup target add")
+    )
+    install["run"] = "rustup target add --toolchain nightly-2030-01-02 x"
+
+    assert _reports(release, "names a toolchain")
+
+
+def test_a_missing_native_target_install_is_refused(release: Workflow) -> None:
+    """The native legs need their target added before the build."""
+    steps = _release_steps(release)
+    steps[:] = [
+        step
+        for step in steps
+        if not str(step.get("run", "")).startswith("rustup target add")
+    ]
+
+    assert _reports(release, "rustup target add")
 
 
 @pytest.mark.parametrize("linker", ["clang", "", None])

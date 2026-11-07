@@ -100,15 +100,15 @@ builds six targets in one matrix, each leg with a `builder`.
 
 - **Native macOS.** `x86_64-apple-darwin` builds on `macos-15-intel` and
   `aarch64-apple-darwin` on `macos-latest`, with
-  `cargo +nightly-2026-08-13 build --release --target <target>`. `cross` has no
-  Docker image for Apple targets; on a Linux runner it falls back to host
-  cargo, which lacks the target and stops with E0463, so those legs could never
-  build there.
+  `cargo build --release --target <target>` on the nightly that
+  `rust-toolchain.toml` pins. `cross` has no Docker image for Apple targets; on
+  a Linux runner it falls back to host cargo, which lacks the target and stops
+  with E0463, so those legs could never build there.
 - **Cross for the rest.** The Linux (`x86_64`, `aarch64`), Windows GNU and
   FreeBSD legs run `cross build --release --target <target>` on
   `ubuntu-latest`, taking the nightly from `rust-toolchain.toml`: cross
-  composes a malformed toolchain name (`nightly-2026-08-13-2026-08-13-<host>`)
-  from an explicit dated `+toolchain`.
+  composes a malformed toolchain name (the date repeated before the host
+  triple) from an explicit dated `+toolchain`.
 - **Linker for the x86_64 Linux leg.** `.cargo/config.toml` names `clang` as
   that triple's linker for the development build (with mold). The `cross` image
   has gcc and no clang, so the cross step sets
