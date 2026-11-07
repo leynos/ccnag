@@ -92,20 +92,23 @@ def test_a_dropped_or_duplicated_leg_is_refused(release: Workflow, target: str) 
     [
         (
             "cargo",
-            "cross +nightly-2026-08-13 build --release --target ${{ matrix.target }}",
+            "cross build --release --target ${{ matrix.target }}",
         ),
         ("cross", "cargo build --release --target ${{ matrix.target }}"),
         (
             "cross",
-            "cross +nightly-2026-08-13 build --release --target ${{ matrix.target }}",
+            "cross +nightly build --release --target ${{ matrix.target }}",
         ),
-        ("cargo", "cargo build --release --target ${{ matrix.target }}"),
+        (
+            "cargo",
+            "cargo +nightly build --release --target ${{ matrix.target }}",
+        ),
     ],
 )
 def test_a_build_step_running_the_wrong_tool_is_refused(
     release: Workflow, builder: str, run: str
 ) -> None:
-    """A compile step that runs the wrong tool, or drops the toolchain, is refused."""
+    """A compile step running the wrong tool, or overriding the toolchain, is refused."""
     build_step(release, builder)["run"] = run  # type: ignore[index]
 
     assert _reports(release, f"the {builder} step")

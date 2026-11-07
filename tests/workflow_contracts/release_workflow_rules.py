@@ -14,11 +14,10 @@ import typing as typ
 
 from codescene_environment_rules import Workflow, jobs
 
-TOOLCHAIN: typ.Final[str] = "nightly-2026-08-13"
 LINKER_VARIABLE: typ.Final[str] = "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER"
-NATIVE_BUILD: typ.Final[str] = (
-    f"cargo +{TOOLCHAIN} build --release --target ${{{{ matrix.target }}}}"
-)
+# No `+toolchain`: cargo takes the channel from rust-toolchain.toml, so
+# Dependabot's bumps reach the release build.
+NATIVE_BUILD: typ.Final[str] = "cargo build --release --target ${{ matrix.target }}"
 CROSS_BUILD: typ.Final[str] = "cross build --release --target ${{ matrix.target }}"
 PUBLISH_IF: typ.Final[str] = (
     "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && "
