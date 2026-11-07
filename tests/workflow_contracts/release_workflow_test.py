@@ -121,7 +121,11 @@ def _release_steps(release: Workflow) -> list[dict]:
 
 def test_a_setup_step_restating_the_toolchain_is_refused(release: Workflow) -> None:
     """A `toolchain` input on any build step stops bumps reaching the release."""
-    setup = next(step for step in _release_steps(release) if "with" in step)
+    setup = next(
+        step
+        for step in _release_steps(release)
+        if "shared-actions/.github/actions/setup-rust" in str(step.get("uses", ""))
+    )
     setup["with"]["toolchain"] = "nightly-2030-01-02"
 
     assert _reports(release, "sets a toolchain")
