@@ -271,7 +271,7 @@ platform linker and is left out.
 and requires the `cargo llvm-cov` command to assign
 `CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm`. Run both with
 `make test-workflow-contracts`. The decision is recorded in
-[ADR 001](adr-001-rust-build-standard.md).
+[ADR 001](adrs/adr-0001-rust-build-standard.md).
 
 CI also installs `clang` and `lld` through `setup-rust`'s `install-clang-lld`
 input, which installs both on Linux and fails the job unless `clang` and

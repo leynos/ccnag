@@ -45,7 +45,7 @@ held out on purpose:
   unless you assign `RUSTFLAGS` yourself, for example
   `RUSTFLAGS="" cargo build --release`.
 
-See [ADR 001](adr-001-rust-build-standard.md) for the reasoning.
+See [ADR 001](adrs/adr-0001-rust-build-standard.md) for the reasoning.
 
 ### Development build footprint
 
