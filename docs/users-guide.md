@@ -17,7 +17,7 @@ re-state it wherever they override `RUSTFLAGS`. See the
 [Polonius policy](polonius.md) before changing the toolchain or borrow-centric
 APIs.
 
-Development builds use Cranelift for debug code generation. On Linux targets,
+Development builds use LLVM, the default codegen backend. On Linux targets,
 `.cargo/config.toml` configures clang to link with `mold` so local debug builds
 link quickly. Coverage generation uses `lld` instead because LLVM coverage
 tools expect LLVM-compatible linker behaviour.
