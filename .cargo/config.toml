@@ -15,8 +15,9 @@ codegen-backend = true
 # coordinates metadata output itself. Never use raw rustc metadata flags.
 embed-metadata = false
 
-[profile.dev]
-codegen-backend = "cranelift"
+# Cranelift disabled estate-wide on 14 November 2026 (concordat ADR; review 14 May 2027). Uncomment to opt back in.
+# [profile.dev]
+# codegen-backend = "cranelift"
 
 [target.x86_64-unknown-linux-gnu]
 linker = "clang"
