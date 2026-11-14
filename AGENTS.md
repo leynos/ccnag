@@ -240,22 +240,25 @@ cloned only on insertion, and error context is built lazily. See
 
     ```makefile
     make interrogate
-    RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" RUSTFLAGS="$(DEV_RUST_FLAGS)" cargo doc --no-deps
-    cargo clippy --all-targets --all-features -- -D warnings
-    RUSTFLAGS="$(DEV_RUST_FLAGS)" whitaker --all -- --all-targets --all-features
+    RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)" $(CARGO) doc --no-deps
+    RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
+    PATH="$(USER_BIN_PATH):$(PATH)" \
+      RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)" $(WHITAKER) --all -- $(CARGO_FLAGS)
     ```
 
     first checking Python docstring coverage (`make interrogate`, which needs
     `uv` and fails on any undocumented definition under `tests`), then building
-    documentation before linting every target with all features enabled.
-    Documentation warnings, Clippy warnings, and Whitaker findings fail the
-    command.
+    documentation before linting every target with all features enabled. The
+    `CARGO_FLAGS` default is `--all-targets --all-features`, and `CLIPPY_FLAGS`
+    adds `-- -D warnings` to it. Documentation warnings, Clippy warnings, and
+    Whitaker findings fail the command.
   - `make test` executes:
 
     ```makefile
     TEST_CMD := $(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test)
-    RUSTFLAGS="$(DEV_RUST_FLAGS)" $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
-    RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) test --doc --workspace --all-features
+    RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)" $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
+    RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" \
+      RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(DEV_RUST_FLAGS)" $(CARGO) test --doc --workspace --all-features
     ```
 
     running the full test suite with `cargo-nextest` when available and
@@ -264,10 +267,13 @@ cloned only on insertion, and error context is built lazily. See
     Use `make fmt` (`cargo +nightly fmt --all`, then `mdtablefix` and
     `markdownlint-cli2 --fix`) to apply formatting fixes reported by the
     formatter check.
-- Recipes append `DEV_RUST_FLAGS` to any inherited `RUSTFLAGS`, such as the
-  value CI exports, rather than replacing it. The defaults are `-D warnings`,
-  `-Zpolonius=next`, `-Zthreads=8`, and, on Linux, `-C link-arg=-fuse-ld=mold`
-  to select the `mold` linker. `RUSTDOC_FLAGS` defaults to
+- `make lint`, `make test`, and `make build` append `DEV_RUST_FLAGS` to any
+  inherited `RUSTFLAGS`, such as the value CI exports, rather than replacing it.
+  `make release` appends `RUST_FLAGS` and `POLONIUS_FLAGS` instead, and
+  `make coverage` assigns `RUSTFLAGS` outright, replacing any inherited value.
+  The `DEV_RUST_FLAGS` defaults are `-D warnings`, `-Zpolonius=next`,
+  `-Zthreads=8`, and, on Linux, `-C link-arg=-fuse-ld=mold` to select the
+  `mold` linker. `RUSTDOC_FLAGS` defaults to
   `--cfg docsrs -D warnings -Zpolonius=next`.
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in the code itself rather than
