@@ -4,6 +4,17 @@ This guide explains the contributor workflow for the generated ccnag project.
 
 ## Local Workflow
 
+Cognitive complexity is not gated by Clippy. Clippy's `cognitive_complexity`
+scores code after macro expansion, so it counts branching a macro generated,
+and neither `Cargo.toml` nor `clippy.toml` enables it. Whitaker's experimental
+`macro_aware_cognitive_complexity` gates it at `max_complexity = 9`,
+CodeScene's ceiling. `dylint.toml` opts in with
+`[whitaker] experimental = ["macro_aware_cognitive_complexity"]`. Fix a finding
+by extracting named helpers, never by raising the threshold. A Whitaker suite
+installed before the lint existed (v0.2.12 or earlier) does not register it and
+silently leaves the gate inactive, so rerun `whitaker-installer` to refresh the
+suite after updating a checkout.
+
 Use `make all` as the public entrypoint for formatting, linting, and tests.
 `make lint` runs `make interrogate`, rustdoc, Clippy, and Whitaker. The
 `interrogate` target runs interrogate 1.7.0 through `uv tool run` and requires
