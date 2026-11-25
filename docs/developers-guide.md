@@ -168,8 +168,8 @@ The builder requires Python 3.14, so the `Makefile` runs it with
 `uv tool run --python 3.14`, whatever interpreter the rest of the repository
 uses. `uv` downloads Python 3.14 when it is missing. Contributors who disable
 interpreter downloads must install Python 3.14 before running `make spelling`.
-The `interrogate` target is the contrast: it stays unpinned so that it uses the
-same interpreter as the PyO3 build and never links against a downloaded one.
+The `interrogate` target, by contrast, passes no `--python` option, because the
+repository does not select an interpreter for it.
 
 ### Security audit ignores
 
