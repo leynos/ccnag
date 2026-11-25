@@ -164,6 +164,13 @@ drift-checked in CI, so a shared-dictionary update lands on the next run
 without a follow-up commit here. Add narrow repository exceptions to
 `typos.local.toml` and re-run `make spelling`.
 
+The builder requires Python 3.14, so the `Makefile` runs it with
+`uv tool run --python 3.14`, whatever interpreter the rest of the repository
+uses. `uv` downloads Python 3.14 when it is missing. Contributors who disable
+interpreter downloads must install Python 3.14 before running `make spelling`.
+The `interrogate` target, by contrast, passes no `--python` option, because the
+repository does not select an interpreter for it.
+
 ### Security audit ignores
 
 Security audit jobs may set `CARGO_AUDIT_IGNORES` for narrowly scoped RustSec
