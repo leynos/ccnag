@@ -133,8 +133,8 @@ The generated `Makefile` exposes these public targets:
 - `make spelling` runs the pinned `typos-config-builder` gate. It regenerates
   `typos.toml` from the live shared dictionary and the `typos.local.toml`
   overlay, then checks Markdown prose. The tracked `typos.toml` is never
-  drift-checked in CI. The builder needs Python 3.14, so the target runs it
-  with `uv tool run --python 3.14`; `uv` downloads that interpreter when it is
+  drift-checked in CI. The builder needs Python 3.14, so the target runs it with
+  `uv tool run --python 3.14`; `uv` downloads that interpreter when it is
   missing, and environments that forbid downloads must provide Python 3.14.
 - `make nixie` validates Mermaid diagrams.
 
