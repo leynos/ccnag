@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Setup Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@b804b69fa7f978cf9091b9d9bd5481d8ce58c2ea
+        uses: leynos/shared-actions/.github/actions/setup-rust@aac188380fb9736e27f2c67d0074d94d71c8b62f
         with:
           expect-cache: any
           # One sccache lane with coverage-main.yml's publisher: only a push to main saves,
@@ -41,7 +41,7 @@ jobs:
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
         # first release with `--check` and `--git`.
-        uses: leynos/shared-actions/.github/actions/install-mdtablefix@0606ca899ce2995a0c4bc78e660e80832e6e8855
+        uses: leynos/shared-actions/.github/actions/install-mdtablefix@aac188380fb9736e27f2c67d0074d94d71c8b62f
         with:
           version: "0.6.1"
 
@@ -85,7 +85,7 @@ jobs:
         if: github.actor != 'dependabot[bot]'
         run: make audit
       - name: Install the YAML lint tools
-        uses: leynos/shared-actions/.github/actions/install-yaml-lint@a108423efa7fb83565089449f2647d34286a48a4
+        uses: leynos/shared-actions/.github/actions/install-yaml-lint@aac188380fb9736e27f2c67d0074d94d71c8b62f
       - name: Lint
         run: make lint
       - name: Log coverage linker configuration
@@ -95,7 +95,7 @@ jobs:
           echo "Coverage CFLAGS: -fuse-ld=lld"
           echo "Coverage LDFLAGS: -fuse-ld=lld"
       - name: Test and Measure Coverage
-        uses: leynos/shared-actions/.github/actions/generate-coverage@6cec89bac47a21cf756d68d638a9a510998e57f8
+        uses: leynos/shared-actions/.github/actions/generate-coverage@aac188380fb9736e27f2c67d0074d94d71c8b62f
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
           RUSTFLAGS: -Zpolonius=next -C link-arg=-fuse-ld=lld
