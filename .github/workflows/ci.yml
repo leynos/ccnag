@@ -1,4 +1,3 @@
-
 name: CI
 
 'on':
@@ -85,6 +84,8 @@ jobs:
       - name: Audit dependencies
         if: github.actor != 'dependabot[bot]'
         run: make audit
+      - name: Install the YAML lint tools
+        uses: leynos/shared-actions/.github/actions/install-yaml-lint@a108423efa7fb83565089449f2647d34286a48a4
       - name: Lint
         run: make lint
       - name: Log coverage linker configuration
@@ -115,24 +116,23 @@ jobs:
           RUSTFLAGS: -D warnings -Zpolonius=next -Zthreads=8 -C link-arg=-fuse-ld=mold
           RUSTDOCFLAGS: --cfg docsrs -D warnings -Zpolonius=next
         run: cargo test --doc --workspace --all-features
-      # Deferred CodeScene coverage gate (mode: check):
-      # The changed-line gate is intentionally NOT wired here yet.
-      # `cs-coverage check` fails on any CodeScene project whose configuration
-      # lacks a `gates` section — a CodeScene-side, per-project setting, not a
-      # CI defect. This generated repository has no upload step on pull
-      # requests, so the coverage rollup cannot be poisoned by a timed-out
-      # check. Once the repository is onboarded to CodeScene coverage and its
-      # project gate is enabled, add a guarded step referencing the project
-      # URL https://api.codescene.io/v2/projects/<project-id>:
-      #     - name: Check coverage against CodeScene gates
-      #       env:
-      #         CS_ACCESS_TOKEN: ${{ secrets.CS_ACCESS_TOKEN }}
-      #       if: env.CS_ACCESS_TOKEN != ''
-      #       uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@47b337e4f230b591891656534d4ffad868131740
-      #       with:
-      #         format: lcov
-      #         mode: check
-      #         project-url: https://api.codescene.io/v2/projects/<project-id>
-      #         access-token: ${{ env.CS_ACCESS_TOKEN }}
-      #         installer-checksum: ${{ vars.CODESCENE_CLI_SHA256 }}
-
+        # Deferred CodeScene coverage gate (mode: check):
+        # The changed-line gate is intentionally NOT wired here yet.
+        # `cs-coverage check` fails on any CodeScene project whose configuration
+        # lacks a `gates` section — a CodeScene-side, per-project setting, not a
+        # CI defect. This generated repository has no upload step on pull
+        # requests, so the coverage rollup cannot be poisoned by a timed-out
+        # check. Once the repository is onboarded to CodeScene coverage and its
+        # project gate is enabled, add a guarded step referencing the project
+        # URL https://api.codescene.io/v2/projects/<project-id>:
+        #     - name: Check coverage against CodeScene gates
+        #       env:
+        #         CS_ACCESS_TOKEN: ${{ secrets.CS_ACCESS_TOKEN }}
+        #       if: env.CS_ACCESS_TOKEN != ''
+        #       uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@47b337e4f230b591891656534d4ffad868131740
+        #       with:
+        #         format: lcov
+        #         mode: check
+        #         project-url: https://api.codescene.io/v2/projects/<project-id>
+        #         access-token: ${{ env.CS_ACCESS_TOKEN }}
+        #         installer-checksum: ${{ vars.CODESCENE_CLI_SHA256 }}
