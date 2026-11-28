@@ -50,7 +50,9 @@ SUITE_JOB = "ci.yml/build-test"
 #: The coverage inputs this repository passes. The pinned action declares no
 #: doctest input, so the contract holds the inputs to this set rather than
 #: asserting an input the action would ignore.
-COVERAGE_INPUTS = frozenset({"output-path", "format", "with-ratchet"})
+COVERAGE_INPUTS = frozenset(
+    {"output-path", "format", "with-ratchet", "publish-artefact"}
+)
 DEPENDENCY_TABLES = ("dependencies", "dev-dependencies", "build-dependencies")
 
 

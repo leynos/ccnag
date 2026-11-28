@@ -105,6 +105,7 @@ jobs:
           output-path: lcov.info
           format: lcov
           with-ratchet: 'true'
+          publish-artefact: 'false'
       # The doctests are the only part of `make test` the coverage step does
       # not run. The flags are the ones `make test` gives its doctest line
       # (DEV_RUST_FLAGS and RUSTDOC_FLAGS); both restate Polonius because an
