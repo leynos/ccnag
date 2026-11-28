@@ -252,10 +252,11 @@ python3 scripts/uv_gate.py tool --python 3.13 --from 'pytest==9.2.0' \
 ```
 
 The Makefile pins `pytest` and `pyyaml` (`PYTEST_VERSION`, `PYYAML_VERSION`).
-No project environment or extra install is required. Run it after editing
-anything under `.github/workflows/`; CI runs it in `build-test` after the
-spelling check, and the contract fails the build if a workflow loses a
-mechanism it depends on.
+The helper needs `python3` 3.9 or newer on `PATH` and finds `uv` there; the
+Makefile has no `UV` override. No project environment or extra install is
+required. Run it after editing anything under `.github/workflows/`; CI runs it
+in `build-test` after the spelling check, and the contract fails the build if a
+workflow loses a mechanism it depends on.
 
 ## The build standard
 
