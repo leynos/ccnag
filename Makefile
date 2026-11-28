@@ -41,6 +41,17 @@ MDTABLEFIX ?= mdtablefix
 MDTABLEFIX_SELECT = --git --include-untracked
 MDTABLEFIX_RULES = --wrap --renumber --breaks --ellipsis --fences
 NIXIE ?= nixie
+# Every uv call but the spelling builder's goes through the vendored helper,
+# which cleans the environment, uses the global uv cache, runs offline first and
+# goes online at most once. The builder runs directly at its release tag,
+# because the spelling baseline requires that form and the helper accepts only
+# a full commit. See
+# https://github.com/leynos/shared-actions/tree/main/uv_gate for the contract.
+# `scripts/uv_gate.py` is the shared-actions helper, vendored byte for byte, so
+# update it by copying the canonical file, never by editing it here.
+UV_GATE ?= python3 scripts/uv_gate.py
+PYTEST_VERSION ?= 9.2.0
+PYYAML_VERSION ?= 6.0.3
 TYPOS_CONFIG_BUILDER_VERSION ?= v0.1.3
 TYPOS_CONFIG_BUILDER := uv tool run --python 3.14 \
     --from "git+https://github.com/leynos/typos-config-builder.git@$(TYPOS_CONFIG_BUILDER_VERSION)" \
@@ -81,8 +92,8 @@ INTERROGATE_TARGETS ?= tests
 # Level 2 prints a MISSED row per undocumented definition, which the
 # `interrogate` target fails on: the rounded percentage alone passes a lone gap.
 INTERROGATE_FLAGS ?= -vv --fail-under 100
-INTERROGATE = uv tool run \
-	--from 'interrogate==$(INTERROGATE_VERSION)' interrogate
+INTERROGATE = $(UV_GATE) tool \
+	--from 'interrogate==$(INTERROGATE_VERSION)' -- interrogate
 
 # Interrogate rounds its percentage to one decimal, so `--fail-under 100` alone
 # passes a lone gap in a large repository; fail on any MISSED row as well.
@@ -121,7 +132,8 @@ spelling: ## Enforce en-GB-oxendict spelling in Markdown prose
 	$(TYPOS_CONFIG_BUILDER) gate --repository .
 
 test-workflow-contracts: ## Validate the GitHub workflow contracts
-	uv run --no-project --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q
+	$(UV_GATE) tool --from 'pytest==$(PYTEST_VERSION)' --with 'pyyaml==$(PYYAML_VERSION)' \
+		-- pytest tests/workflow_contracts -q
 
 nixie: ## Validate Mermaid diagrams
 	$(NIXIE) --no-sandbox
