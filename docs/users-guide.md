@@ -192,5 +192,5 @@ The upload runs only when both hold:
   coverage but uploads nothing, because CodeScene analyses `main` alone.
 
 The token is passed to the upload action as its input and is never placed in an
-environment. The upload also reads the `CODESCENE_CLI_SHA256` repository
-variable as its installer checksum. Pull requests never contact CodeScene.
+environment. The uploader pins its own installer, so no checksum variable is
+read. Pull requests never contact CodeScene.
