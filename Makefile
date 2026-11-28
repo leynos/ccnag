@@ -88,7 +88,7 @@ coverage: ## Generate lcov coverage with lld for llvm-tools compatibility
 # owns. Add a new Python directory to INTERROGATE_TARGETS. No `--python` pin: a
 # managed interpreter would be downloaded, and a PyO3 build could link it.
 INTERROGATE_VERSION ?= 1.7.0
-INTERROGATE_TARGETS ?= tests
+INTERROGATE_TARGETS ?= scripts tests
 # Level 2 prints a MISSED row per undocumented definition, which the
 # `interrogate` target fails on: the rounded percentage alone passes a lone gap.
 INTERROGATE_FLAGS ?= -vv --fail-under 100
@@ -132,7 +132,7 @@ spelling: ## Enforce en-GB-oxendict spelling in Markdown prose
 	$(TYPOS_CONFIG_BUILDER) gate --repository .
 
 test-workflow-contracts: ## Validate the GitHub workflow contracts
-	$(UV_GATE) tool --from 'pytest==$(PYTEST_VERSION)' --with 'pyyaml==$(PYYAML_VERSION)' \
+	$(UV_GATE) tool --python 3.13 --from 'pytest==$(PYTEST_VERSION)' --with 'pyyaml==$(PYYAML_VERSION)' \
 		-- pytest tests/workflow_contracts -q
 
 nixie: ## Validate Mermaid diagrams
