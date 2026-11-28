@@ -17,10 +17,11 @@ earlier) does not register it and silently leaves the gate inactive, so rerun
 
 Use `make all` as the public entrypoint for formatting, linting, and tests.
 `make lint` runs `make interrogate`, rustdoc, Clippy, and Whitaker. The
-`interrogate` target runs interrogate 1.7.0 through `uv tool run` and requires
-a docstring on every definition under `tests` (an `INTERROGATE_TARGETS` entry
-per Python directory), printing every definition and failing on any `MISSED`
-row because interrogate rounds its percentage to one decimal.
+`interrogate` target runs interrogate 1.7.0 through the vendored
+`scripts/uv_gate.py` helper (`uv_gate tool`) and requires a docstring on every
+definition under `scripts` and `tests` (an `INTERROGATE_TARGETS` entry per
+Python directory), printing every definition and failing on any `MISSED` row
+because interrogate rounds its percentage to one decimal.
 `tests/workflow_contracts/interrogate_gate_test.py` asserts that wiring and
 runs the target against a stub tool. `make test` prefers `cargo nextest run`
 and falls back to `cargo test` when cargo-nextest is not available.
@@ -241,16 +242,21 @@ capable revision. Remove that literal revision assertion once the probe exists.
 `tests/workflow_contracts/`, which parse the GitHub workflow files and assert
 the mechanisms they must contain (for example, that no workflow runs the suite
 outside the coverage step and that `build-test` runs the doctests). The target
-needs only `uv` on `PATH`, because it runs:
+needs `uv` and `python3` on `PATH`, because it runs the contract tests through
+the vendored `scripts/uv_gate.py` helper, offline first, with at most one
+online attempt when the tools are not cached yet:
 
 ```sh
-uv run --no-project --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q
+python3 scripts/uv_gate.py tool --python 3.13 --from 'pytest==9.2.0' \
+  --with 'pyyaml==6.0.3' -- pytest tests/workflow_contracts -q
 ```
 
-No project environment or extra install is required. Run it after editing
-anything under `.github/workflows/`; CI runs it in `build-test` after the
-spelling check, and the contract fails the build if a workflow loses a
-mechanism it depends on.
+The Makefile pins `pytest` and `pyyaml` (`PYTEST_VERSION`, `PYYAML_VERSION`).
+The helper needs `python3` 3.9 or newer on `PATH` and finds `uv` there; the
+Makefile has no `UV` override. No project environment or extra install is
+required. Run it after editing anything under `.github/workflows/`; CI runs it
+in `build-test` after the spelling check, and the contract fails the build if a
+workflow loses a mechanism it depends on.
 
 ## The build standard
 
